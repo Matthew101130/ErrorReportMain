@@ -12,17 +12,6 @@
 
 #endif //PCH_H
 
-
-#ifndef IMPORT_DLL
-#define IMPORT_DLL extern "C" _declspec(dllimport)
+#ifndef DLL_API
+#define DLL_API extern "C" __declspec(dllexport)
 #endif
-
-#include <string.h>
-#include <stdio.h>
-#include <tchar.h>
-
-constexpr int strSize = 10000;
-
-IMPORT_DLL int MEMORY_ERROR(const wchar_t* ErrorProgram, const wchar_t* Operate, const wchar_t* Address, const wchar_t* CannotBe);
-IMPORT_DLL int DLL_MISSING_ERROR(const wchar_t* ErrorProgram, const wchar_t* MissingDll);
-IMPORT_DLL int EXE_ERROR(const wchar_t* ErrorProgram, const wchar_t* ErrorName, const wchar_t* ErrorCode, const wchar_t* Address);

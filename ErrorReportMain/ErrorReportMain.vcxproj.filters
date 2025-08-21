@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="头文件\ShowErr">
+      <UniqueIdentifier>{7fa291aa-b331-4eea-b3a1-f1063394855a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="framework.h">
@@ -22,13 +25,16 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="ShowErr\DLLMissingError.h">
-      <Filter>头文件</Filter>
+      <Filter>头文件\ShowErr</Filter>
     </ClInclude>
     <ClInclude Include="ShowErr\ExeError.h">
-      <Filter>头文件</Filter>
+      <Filter>头文件\ShowErr</Filter>
     </ClInclude>
     <ClInclude Include="ShowErr\MemoryError.h">
-      <Filter>头文件</Filter>
+      <Filter>头文件\ShowErr</Filter>
+    </ClInclude>
+    <ClInclude Include="ShowErr\ShowErr.h">
+      <Filter>头文件\ShowErr</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -38,5 +44,17 @@
     <ClCompile Include="pch.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="ShowErr\ExeError.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="ShowErr\MemoryError.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="ShowErr\DLLMissingError.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cpp.hint" />
   </ItemGroup>
 </Project>
