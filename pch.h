@@ -5,4 +5,9 @@
 
 #include "framework.h"
 
+#include <algorithm>
+#include <cstring>
+#include <cwchar>
 #include <string>
+#include <utility>
+#include <vector>
