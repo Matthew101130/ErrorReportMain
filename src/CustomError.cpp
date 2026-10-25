@@ -4,13 +4,6 @@
 
 #include "Detail/MessageBoxError.h"
 
-#include <algorithm>
-#include <cstring>
-#include <cwchar>
-#include <string>
-#include <utility>
-#include <vector>
-
 namespace {
 
 constexpr int kBaseDpi = 96;

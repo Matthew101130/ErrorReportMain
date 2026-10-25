@@ -96,6 +96,7 @@ ErrorReportMain/
 ├─ ErrorReportMain.vcxproj         # DLL 工程
 ├─ ErrorReportMain.def             # 模块定义文件，固定四个无修饰导出名
 ├─ CppProperties.json              # VS“打开文件夹”模式的 IntelliSense 配置
+├─ Launcher/                       # 官方启动器（C# WinForms，可选）
 ├─ .gitignore
 ├─ include/                        # 公共接口，调用方只需包含这里
 │  ├─ ErrorReport.h                # 总入口头文件
@@ -254,11 +255,44 @@ choice = lib.CUSTOM_ERROR("自定义错误", "正文", "error", "确定|取消",
 # choice: 0 = 确定, 1 = 取消, -1 = 关闭, -2 = 失败
 ```
 
+## 官方启动器
+
+`Launcher/` 提供一个可选的 C# WinForms 启动器，不想自己写调用程序时可以用它生成
+“点开就弹错误框”的 exe。它支持：
+
+- 下拉选择四个接口；
+- 前三个接口只显示各自的参数，`CUSTOM_ERROR` 提供标题、正文、图标下拉框、
+  按钮勾选框和隐藏关闭按钮；
+- 实时预览图；
+- 日志文件夹可直接输入，也可点右侧文件夹图标浏览选择；
+- 点击“生成 .exe”输出播放器 exe，并把 `ErrorReportMain.dll` 复制到同目录。
+
+![启动器界面](Launcher/launcher-preset.png)
+
+构建（先构建 x64 DLL）：
+
+```powershell
+msbuild ErrorReportMain.slnx /m /p:Configuration=Release /p:Platform=x64
+dotnet build Launcher/ErrorReportLauncher.csproj -c Release
+```
+
+运行：
+
+```text
+Launcher\bin\Release\net48\ErrorReportLauncher.exe
+```
+
+启动器和生成的播放器需要 **.NET Framework 4.8**，当前按 **x64** 构建；生成 exe
+需要和 `ErrorReportMain.dll` 放在同一目录。详细说明见
+[Launcher/README.md](Launcher/README.md)。
+
 ## 设计说明
 
 - 文本通过 `std::wstring` 拼接，不使用固定长度栈缓冲区，不存在截断或格式字符串不匹配问题。
 - 所有参数均做空指针/空串保护，传入 `nullptr` 不会崩溃。
 - 公共头文件不包含 `pch.h`，可安全地被外部工程包含（包括 C 源文件）。
+- `pch.h` 只预编译 `windows.h` 和稳定、常用的标准库头文件；项目头文件仍由各 `.cpp` 直接包含，
+  以保证声明、`extern "C"` 链接和依赖关系清晰。
 - 导出名由 `ErrorReportMain.def` 固定；构建 DLL 时 `ERRORREPORT_API` 为空，链接 DLL 时为 `__declspec(dllimport)`，静态编译时为空。仓库工程只生成 DLL，如需把实现直接编入调用方，可手动编译 `src/` 中的实现文件（通常排除 `src/dllmain.cpp`）并定义 `ERRORREPORTMAIN_STATIC`（不需要 `.def`）。迁移到其他构建系统时，记得保留 `.def` 或改用 `__declspec(dllexport)`。
 - 消息框优先挂到调用线程的活动窗口；没有活动窗口时，只接受同进程的前台窗口，避免对话框被其他窗口遮挡或错误绑定到其他进程。
 - `CUSTOM_ERROR` 使用内存中的对话框模板加标准 `STATIC` / `BUTTON` / `EDIT` 控件，不依赖资源文件、Qt 或第三方 UI 库。
@@ -277,4 +311,4 @@ choice = lib.CUSTOM_ERROR("自定义错误", "正文", "error", "确定|取消",
 - `CUSTOM_ERROR` 的按钮文本把 `&` 当作 Win32 加速键前缀；要显示字面量 `&` 请写成 `&&`。
 - `CUSTOM_ERROR` 在窗口打开期间不会跟随显示器 DPI 变化重新布局；初始 DPI 和居中位置是正确的。
 - 提示文本目前是简体中文硬编码，没有资源 DLL 或多语言切换。
-- 仓库没有自动化测试或 demo 宿主；`dumpbin` 验证和实际弹框行为需要手工检查。
+- 仓库没有自动化测试；可以使用 `Launcher/` 启动器手工生成并验证弹窗和日志。
