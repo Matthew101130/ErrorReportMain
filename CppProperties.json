@@ -7,13 +7,18 @@
       "name": "x64-Release",
       "includePath": [
         "${env.INCLUDE}",
-        "${workspaceRoot}\\**"
+        "${workspaceRoot}",
+        "${workspaceRoot}\\include",
+        "${workspaceRoot}\\src"
       ],
       "defines": [
         "WIN32",
         "NDEBUG",
         "UNICODE",
-        "_UNICODE"
+        "_UNICODE",
+        "_WINDOWS",
+        "_USRDLL",
+        "ERRORREPORTMAIN_EXPORTS"
       ],
       "intelliSenseMode": "windows-msvc-x64"
     }
