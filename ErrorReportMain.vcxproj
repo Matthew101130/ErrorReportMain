@@ -131,6 +131,7 @@
   <ItemGroup>
     <ClInclude Include="framework.h" />
     <ClInclude Include="include\ErrorReport.h" />
+    <ClInclude Include="include\ErrorReport\CustomError.h" />
     <ClInclude Include="include\ErrorReport\DLLMissingError.h" />
     <ClInclude Include="include\ErrorReport\ExeError.h" />
     <ClInclude Include="include\ErrorReport\Export.h" />
@@ -145,6 +146,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\CustomError.cpp" />
     <ClCompile Include="src\dllmain.cpp" />
     <ClCompile Include="src\DLLMissingError.cpp" />
     <ClCompile Include="src\ExeError.cpp" />

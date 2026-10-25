@@ -1,8 +1,13 @@
 #pragma once
 
+#include <windows.h>
+
 #include <string>
 
 namespace errorreport::detail {
+
+// 选择错误窗口的 owner：调用线程的活动窗口；没有时只接受同进程的前台窗口。
+HWND GetErrorMessageOwner() noexcept;
 
 // 空指针或空字符串时返回 fallback，否则返回 value 的副本。
 std::wstring ToWString(const wchar_t* value, const wchar_t* fallback);

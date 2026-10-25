@@ -9,8 +9,8 @@ constexpr const wchar_t* kUnknownProgram = L"未知程序";
 constexpr const wchar_t* kFallbackText = L"发生错误，但无法显示详细信息。";
 constexpr const wchar_t* kFallbackCategory = L"应用程序错误";
 
-// 优先把消息框挂到调用线程的活动窗口；若没有，则只接受同进程的前台窗口，
-// 避免把对话框错误地绑定到其他进程的窗口。
+} // namespace
+
 HWND GetErrorMessageOwner() noexcept {
     if (HWND active = ::GetActiveWindow(); active != nullptr) {
         return active;
@@ -25,8 +25,6 @@ HWND GetErrorMessageOwner() noexcept {
     ::GetWindowThreadProcessId(foreground, &processId);
     return processId == ::GetCurrentProcessId() ? foreground : nullptr;
 }
-
-} // namespace
 
 std::wstring ToWString(const wchar_t* value, const wchar_t* fallback) {
     if (value != nullptr && value[0] != L'\0') {
