@@ -10,6 +10,8 @@
 - Visual Studio 2026 或 .NET SDK，用来构建启动器
 - 先构建项目的 **x64 Release DLL**
 - 当前启动器按 **x64** 构建，生成 exe 也按 x64 运行，必须配 x64 的 `ErrorReportMain.dll`
+- 启动器和生成 exe 内嵌 comctl32 v6 manifest，使用 Windows 10/11 的现代按钮/图标；
+  如果把 DLL 嵌入到没有 manifest 的原生宿主里，控件会退回经典样式
 
 ## 构建
 
@@ -77,6 +79,10 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 - 调用 DLL 弹出对应窗口；
 - 用户关闭窗口后，在配置的日志文件夹写入 `.log`。
 
+实际效果（`DLL_MISSING_ERROR`，已带 comctl32 v6 清单）：
+
+![生成 exe 的实际弹窗](generated-popup.png)
+
 ## 日志
 
 文件名：
@@ -127,5 +133,6 @@ User Choice: 1
 - `PlayerConfig.cs`：配置结构和追加/读取逻辑。
 - `PlayerRunner.cs`：P/Invoke DLL、弹窗、写日志。
 - `Generator.cs`：复制启动器和 DLL、追加配置。
+- `app.manifest`：comctl32 v6 视觉样式清单，会随启动器和生成 exe 一起嵌入。
 - `MainForm.cs`：下拉框、参数控件、文件夹选择、生成。
-- `PreviewPanel.cs`：GDI+ 绘制预览图。
+- `PreviewPanel.cs`：GDI+ 绘制现代图标/按钮预览图。

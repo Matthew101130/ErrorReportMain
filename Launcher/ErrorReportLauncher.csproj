@@ -10,6 +10,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>ErrorReportLauncher</AssemblyName>
     <RootNamespace>ErrorReportLauncher</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <!-- 如果已经构建了 C++ DLL，就把它复制到启动器输出目录，方便直接生成播放器。 -->

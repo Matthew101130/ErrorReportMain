@@ -7,7 +7,7 @@
 - 语言标准：C++20（`/std:c++20`），C 头文件兼容 C17
 - 目标平台：Win32 / x64，Unicode（解决方案平台写作 x86，工程平台写作 Win32）
 - 导出方式：`extern "C"` + `ErrorReportMain.def`，四个导出名在 x86/x64 下都无名称修饰
-- 运行时依赖：仅 `KERNEL32.dll`、`USER32.dll`、`GDI32.dll`（静态 CRT）
+- 运行时依赖：仅 `KERNEL32.dll`、`USER32.dll`、`GDI32.dll`、`SHELL32.dll`（静态 CRT）
 
 ## 接口
 
@@ -144,14 +144,14 @@ msbuild ErrorReportMain.vcxproj /m /p:Configuration=Release /p:Platform=Win32
 
 ```powershell
 dumpbin /exports x64\Release\ErrorReportMain.dll
-dumpbin /exports Win32\Release\ErrorReportMain.dll
+dumpbin /exports Release\ErrorReportMain.dll
 ```
 
 两个产物都应列出 `DLL_MISSING_ERROR`、`EXE_ERROR`、`MEMORY_ERROR`、`CUSTOM_ERROR`。x86 的输出会写成
 `DLL_MISSING_ERROR = _DLL_MISSING_ERROR`：等号左边是导出名（无修饰），右边是 DLL 内部的
 C 修饰符号；判断导出名时以等号左边为准。
 
-产物位于 `x64\Release\`（Win32 对应 `Win32\Release\`）：
+产物位于 `x64\Release\`（Win32 对应 `Release\`，没有额外的 `Win32\` 子目录）：
 
 ```
 ErrorReportMain.dll   # 运行时需要
@@ -255,6 +255,27 @@ choice = lib.CUSTOM_ERROR("自定义错误", "正文", "error", "确定|取消",
 # choice: 0 = 确定, 1 = 取消, -1 = 关闭, -2 = 失败
 ```
 
+### 视觉样式（为什么有时显示经典按钮）
+
+`MessageBoxW` 和 `CUSTOM_ERROR` 里的标准控件都使用**宿主进程**的视觉样式：
+
+- 带 `Microsoft.Windows.Common-Controls` 6.0 manifest 的宿主会显示 Windows 10/11 的现代图标和扁平按钮；
+- 不带这个 manifest 的原生宿主会退回到经典样式，看起来像 Windows 2000。
+
+这不是 DLL 内部能单独切换的开关。Python 官方安装包的 `python.exe` 通常自带 comctl32 v6
+manifest，所以用 `ctypes.CDLL("ErrorReportMain.dll")` 调用时是现代的；仓库自带的启动器和
+生成 exe 也已经内嵌 [Launcher/app.manifest](Launcher/app.manifest)，所以同样是现代的。
+
+自己写原生 C++ 宿主时，可以给宿主 exe 加：
+
+```cpp
+#pragma comment(linker, "/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
+```
+
+或者给宿主工程添加一个带 comctl32 v6 依赖的 app.manifest。C# WinForms 宿主即使调用了
+`Application.EnableVisualStyles()`，也建议在 exe 里嵌入这个 manifest，原生 `MessageBoxW`
+才会稳定使用当前主题。否则按钮/图标会保持经典样式，但 DLL 的文本、弹窗逻辑和返回值都不受影响。
+
 ## 官方启动器
 
 `Launcher/` 提供一个可选的 C# WinForms 启动器，不想自己写调用程序时可以用它生成
@@ -283,7 +304,8 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 ```
 
 启动器和生成的播放器需要 **.NET Framework 4.8**，当前按 **x64** 构建；生成 exe
-需要和 `ErrorReportMain.dll` 放在同一目录。详细说明见
+需要和 `ErrorReportMain.dll` 放在同一目录。启动器/生成 exe 已内嵌 comctl32 v6
+manifest，弹窗使用 Windows 10/11 的现代按钮和图标（见“视觉样式”）。详细说明见
 [Launcher/README.md](Launcher/README.md)。
 
 ## 设计说明
@@ -295,17 +317,18 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
   以保证声明、`extern "C"` 链接和依赖关系清晰。
 - 导出名由 `ErrorReportMain.def` 固定；构建 DLL 时 `ERRORREPORT_API` 为空，链接 DLL 时为 `__declspec(dllimport)`，静态编译时为空。仓库工程只生成 DLL，如需把实现直接编入调用方，可手动编译 `src/` 中的实现文件（通常排除 `src/dllmain.cpp`）并定义 `ERRORREPORTMAIN_STATIC`（不需要 `.def`）。迁移到其他构建系统时，记得保留 `.def` 或改用 `__declspec(dllexport)`。
 - 消息框优先挂到调用线程的活动窗口；没有活动窗口时，只接受同进程的前台窗口，避免对话框被其他窗口遮挡或错误绑定到其他进程。
-- `CUSTOM_ERROR` 使用内存中的对话框模板加标准 `STATIC` / `BUTTON` / `EDIT` 控件，不依赖资源文件、Qt 或第三方 UI 库。
+- `CUSTOM_ERROR` 使用内存中的对话框模板加标准 `STATIC` / `BUTTON` / `EDIT` 控件，背景使用 `COLOR_WINDOW`，图标来自 shell 的现代库存图标；控件外观跟随宿主视觉样式。
 - `CUSTOM_ERROR` 在创建时按 owner 所在显示器的 DPI 计算尺寸并居中；正文太长时切换为带垂直滚动条的只读 `EDIT`，避免长文本把窗口撑得过高。
 - `HideCloseButton` 通过移除 `WS_SYSMENU` 和系统菜单里的 `SC_CLOSE` 实现，同时在消息处理中忽略 X、Alt+F4 和 Esc。
 - 导出函数捕获所有 C++ 异常；内存不足等情况下退回固定文本，不让异常穿越 C 接口。
-- 使用静态 CRT（Debug 为 `/MTd`，Release 为 `/MT`），DLL 只依赖 `KERNEL32.dll`、`USER32.dll` 和 `GDI32.dll`，目标机器无需安装 VC++ 运行库。
+- 使用静态 CRT（Debug 为 `/MTd`，Release 为 `/MT`），DLL 只依赖 `KERNEL32.dll`、`USER32.dll`、`GDI32.dll` 和 `SHELL32.dll`，目标机器无需安装 VC++ 运行库。
 - 工程开启 `/W4`、SDL 检查与多处理器编译，Debug/Release 均生成调试信息。
 
 ## 已知限制
 
 - 本库只负责弹窗，不捕获真实崩溃、不生成 dump，也不判断进程是否真的处于异常状态。
-- 前三个接口的 `MessageBoxW` 在 Windows 10/11 上使用系统主题，文本和按钮能复刻，但视觉样式不会与 XP 经典弹窗逐像素一致；如果要求像素级复刻，需要自绘对话框。
+- 视觉样式由宿主 manifest 决定：带 comctl32 v6 的宿主使用 Windows 10/11 现代按钮/图标；没有 manifest 的原生宿主显示经典样式（见“视觉样式”）。
+- 文本和布局仍然是经典错误框的复刻，不会与 XP 弹窗逐像素一致；如果要求逐像素，需要自绘对话框。
 - `CUSTOM_ERROR` 最多支持 8 个按钮，且只排成一行；按钮文本过长会把窗口撑宽。
 - `CUSTOM_ERROR` 的图标只支持 `error` / `warning` / `info` / `question` / `none` 这几个系统图标，不支持从 `.ico` 文件加载自定义图标。
 - `CUSTOM_ERROR` 的按钮文本把 `&` 当作 Win32 加速键前缀；要显示字面量 `&` 请写成 `&&`。

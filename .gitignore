@@ -11,6 +11,9 @@
 **/Win32/
 **/bin/
 **/obj/
+/Release/
+/Debug/
+/ErrorReportMain/
 *.obj
 *.pdb
 *.ilk

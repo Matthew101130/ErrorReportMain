@@ -4,6 +4,10 @@
 
 #include "Detail/MessageBoxError.h"
 
+#include <shellapi.h>
+
+#pragma comment(lib, "shell32.lib")
+
 namespace {
 
 constexpr int kBaseDpi = 96;
@@ -22,6 +26,8 @@ struct CustomErrorState {
     std::wstring text;
     std::vector<std::wstring> buttons;
     IconKind iconKind = IconKind::None;
+    HICON icon = nullptr;
+    bool iconOwned = false;
     HFONT font = nullptr;
     bool fontOwned = false;
     bool hideClose = false;
@@ -107,7 +113,45 @@ LPCWSTR IconResource(IconKind kind) noexcept {
     }
 }
 
-HICON LoadIconForDpi(IconKind kind, int width, int height) noexcept {
+HICON LoadModernOrSystemIcon(IconKind kind, int width, int height, bool& owned) noexcept {
+    owned = false;
+
+    SHSTOCKICONID stockId = SIID_INVALID;
+    switch (kind) {
+    case IconKind::Error:
+        stockId = SIID_ERROR;
+        break;
+    case IconKind::Warning:
+        stockId = SIID_WARNING;
+        break;
+    case IconKind::Information:
+        stockId = SIID_INFO;
+        break;
+    case IconKind::Question:
+        stockId = SIID_HELP;
+        break;
+    case IconKind::None:
+    default:
+        return nullptr;
+    }
+
+    SHSTOCKICONINFO stockInfo{};
+    stockInfo.cbSize = sizeof(stockInfo);
+    if (SUCCEEDED(::SHGetStockIconInfo(stockId, SHGSI_ICON | SHGSI_LARGEICON, &stockInfo))
+        && stockInfo.hIcon != nullptr) {
+        HICON scaled = reinterpret_cast<HICON>(
+            ::CopyImage(stockInfo.hIcon, IMAGE_ICON, width, height, 0));
+        if (scaled != nullptr) {
+            if (scaled != stockInfo.hIcon) {
+                ::DestroyIcon(stockInfo.hIcon);
+            }
+            owned = true;
+            return scaled;
+        }
+        owned = true;
+        return stockInfo.hIcon;
+    }
+
     const LPCWSTR resource = IconResource(kind);
     if (resource == nullptr || width <= 0 || height <= 0) {
         return nullptr;
@@ -316,7 +360,10 @@ bool InitializeDialogImpl(HWND hDlg, CustomErrorState* state) {
     ::SelectObject(dc, oldFont);
     ::ReleaseDC(hDlg, dc);
 
-    const HICON icon = LoadIconForDpi(state->iconKind, iconSize, iconSize);
+    bool iconOwned = false;
+    const HICON icon = LoadModernOrSystemIcon(state->iconKind, iconSize, iconSize, iconOwned);
+    state->icon = icon;
+    state->iconOwned = iconOwned;
     const int iconWidth = icon != nullptr ? iconSize : 0;
     const int textOffset = icon != nullptr ? iconSize + gap : 0;
     const int contentWidth = textOffset + textWidth;
@@ -513,20 +560,27 @@ INT_PTR CALLBACK CustomErrorDialogProc(HWND hDlg, UINT message, WPARAM wParam, L
             return TRUE;
         }
         break;
+    case WM_CTLCOLORDLG:
+        return reinterpret_cast<INT_PTR>(::GetSysColorBrush(COLOR_WINDOW));
     case WM_CTLCOLORSTATIC:
     case WM_CTLCOLOREDIT: {
         HDC hdc = reinterpret_cast<HDC>(wParam);
         ::SetBkMode(hdc, TRANSPARENT);
-        ::SetBkColor(hdc, ::GetSysColor(COLOR_3DFACE));
-        return reinterpret_cast<INT_PTR>(::GetSysColorBrush(COLOR_3DFACE));
+        ::SetBkColor(hdc, ::GetSysColor(COLOR_WINDOW));
+        return reinterpret_cast<INT_PTR>(::GetSysColorBrush(COLOR_WINDOW));
     }
     case WM_NCDESTROY:
         if (state != nullptr) {
             if (state->fontOwned && state->font != nullptr) {
                 ::DeleteObject(state->font);
             }
+            if (state->iconOwned && state->icon != nullptr) {
+                ::DestroyIcon(state->icon);
+            }
             state->font = nullptr;
             state->fontOwned = false;
+            state->icon = nullptr;
+            state->iconOwned = false;
             ::SetWindowLongPtrW(hDlg, GWLP_USERDATA, 0);
         }
         break;
@@ -568,6 +622,12 @@ int CUSTOM_ERROR(const wchar_t* Title,
             ::DeleteObject(state.font);
             state.font = nullptr;
             state.fontOwned = false;
+        }
+
+        if (state.iconOwned && state.icon != nullptr) {
+            ::DestroyIcon(state.icon);
+            state.icon = nullptr;
+            state.iconOwned = false;
         }
 
         if (result == -1 && !state.completed) {

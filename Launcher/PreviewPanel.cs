@@ -71,16 +71,13 @@ namespace ErrorReportLauncher
                 graphics.DrawRectangle(border, window);
             }
 
-            using (var titleFont = new Font(Font, FontStyle.Bold))
-            {
-                TextRenderer.DrawText(
-                    graphics,
-                    _data.Title,
-                    titleFont,
-                    new Rectangle(window.X + 10, window.Y, window.Width - 50, titleHeight),
-                    Color.Black,
-                    TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
-            }
+            TextRenderer.DrawText(
+                graphics,
+                _data.Title,
+                Font,
+                new Rectangle(window.X + 10, window.Y, window.Width - 50, titleHeight),
+                Color.Black,
+                TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
 
             if (!_data.HideClose)
             {
@@ -93,7 +90,7 @@ namespace ErrorReportLauncher
 
             int contentLeft = window.X + 16;
             int contentTop = titleBar.Bottom + 14;
-            using (Image? icon = GetIcon(_data.Icon))
+            using (Bitmap? icon = CreateModernIcon(_data.Icon, 32))
             {
                 if (icon is not null)
                 {
@@ -148,13 +145,23 @@ namespace ErrorReportLauncher
             for (int i = 0; i < labels.Length; i++)
             {
                 var buttonRectangle = new Rectangle(buttonX, buttonY, widths[i], buttonHeight);
-                using (var buttonBackground = new SolidBrush(Color.FromArgb(240, 240, 240)))
+                using (var buttonBackground = new SolidBrush(Color.FromArgb(250, 250, 250)))
                 {
                     graphics.FillRectangle(buttonBackground, buttonRectangle);
                 }
-                using (var buttonBorder = new Pen(Color.FromArgb(140, 140, 140)))
+                using (var buttonBorder = new Pen(Color.FromArgb(200, 200, 200)))
                 {
                     graphics.DrawRectangle(buttonBorder, buttonRectangle);
+                }
+                if (i == 0)
+                {
+                    using var focusPen = new Pen(Color.FromArgb(0, 120, 212), 1.5f);
+                    graphics.DrawRectangle(
+                        focusPen,
+                        buttonRectangle.X + 1,
+                        buttonRectangle.Y + 1,
+                        Math.Max(0, buttonRectangle.Width - 3),
+                        Math.Max(0, buttonRectangle.Height - 3));
                 }
                 TextRenderer.DrawText(
                     graphics,
@@ -170,21 +177,95 @@ namespace ErrorReportLauncher
             }
         }
 
-        private static Image? GetIcon(string icon)
+        private static Bitmap? CreateModernIcon(string icon, int size)
         {
+            if (string.IsNullOrEmpty(icon) || icon == "none")
+            {
+                return null;
+            }
+
+            var bitmap = new Bitmap(size, size);
+            using var graphics = Graphics.FromImage(bitmap);
+            graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
             switch (icon)
             {
                 case "error":
-                    return SystemIcons.Error.ToBitmap();
+                {
+                    using var brush = new SolidBrush(Color.FromArgb(209, 52, 56));
+                    graphics.FillEllipse(brush, 1, 1, size - 2, size - 2);
+                    using var pen = new Pen(Color.White, Math.Max(2f, size / 10f));
+                    float padding = size * 0.32f;
+                    graphics.DrawLine(pen, padding, padding, size - padding, size - padding);
+                    graphics.DrawLine(pen, size - padding, padding, padding, size - padding);
+                    break;
+                }
+
                 case "warning":
-                    return SystemIcons.Warning.ToBitmap();
+                {
+                    var points = new[]
+                    {
+                        new PointF(size / 2f, 2f),
+                        new PointF(size - 2f, size - 3f),
+                        new PointF(2f, size - 3f),
+                    };
+                    using (var brush = new SolidBrush(Color.FromArgb(255, 185, 0)))
+                    {
+                        graphics.FillPolygon(brush, points);
+                    }
+                    using (var pen = new Pen(Color.FromArgb(120, 80, 0), 1.5f))
+                    {
+                        graphics.DrawPolygon(pen, points);
+                    }
+                    using (var pen = new Pen(Color.FromArgb(80, 55, 0), Math.Max(2f, size / 10f)))
+                    {
+                        graphics.DrawLine(pen, size / 2f, size * 0.38f, size / 2f, size * 0.64f);
+                    }
+                    using (var brush = new SolidBrush(Color.FromArgb(80, 55, 0)))
+                    {
+                        graphics.FillEllipse(brush, size * 0.45f, size * 0.72f, size * 0.1f, size * 0.1f);
+                    }
+                    break;
+                }
+
                 case "info":
-                    return SystemIcons.Information.ToBitmap();
+                {
+                    using (var brush = new SolidBrush(Color.FromArgb(0, 120, 212)))
+                    {
+                        graphics.FillEllipse(brush, 1, 1, size - 2, size - 2);
+                    }
+                    using (var brush = new SolidBrush(Color.White))
+                    {
+                        graphics.FillEllipse(brush, size * 0.44f, size * 0.22f, size * 0.12f, size * 0.12f);
+                        graphics.FillRectangle(brush, size * 0.44f, size * 0.4f, size * 0.12f, size * 0.36f);
+                    }
+                    break;
+                }
+
                 case "question":
-                    return SystemIcons.Question.ToBitmap();
+                {
+                    using (var circleBrush = new SolidBrush(Color.FromArgb(0, 120, 212)))
+                    {
+                        graphics.FillEllipse(circleBrush, 1, 1, size - 2, size - 2);
+                    }
+                    using var font = new Font("Segoe UI", size * 0.6f, FontStyle.Bold, GraphicsUnit.Pixel);
+                    using var questionBrush = new SolidBrush(Color.White);
+                    SizeF textSize = graphics.MeasureString("?", font);
+                    graphics.DrawString(
+                        "?",
+                        font,
+                        questionBrush,
+                        (size - textSize.Width) / 2f,
+                        (size - textSize.Height) / 2f - 1f);
+                    break;
+                }
+
                 default:
+                    bitmap.Dispose();
                     return null;
             }
+
+            return bitmap;
         }
     }
 }
