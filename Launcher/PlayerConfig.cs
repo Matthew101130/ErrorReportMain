@@ -19,8 +19,10 @@ namespace ErrorReportLauncher
     /// </summary>
     public sealed class PlayerConfig
     {
-        private static readonly byte[] Magic = Encoding.ASCII.GetBytes("ERLPAY01");
-        private const int FormatVersion = 1;
+        private static readonly byte[] Magic = Encoding.ASCII.GetBytes("ERLPAY02");
+        private static readonly byte[] LegacyMagic = Encoding.ASCII.GetBytes("ERLPAY01");
+        private const int FormatVersion = 2;
+        private const int LegacyFormatVersion = 1;
 
         public ReportFunction Function { get; set; }
         public string LogFolder { get; set; } = string.Empty;
@@ -39,6 +41,9 @@ namespace ErrorReportLauncher
         public string Icon { get; set; } = "none";
         public string Buttons { get; set; } = string.Empty;
         public int HideCloseButton { get; set; }
+
+        /// <summary>生成时嵌入的 x64 DLL；播放器会先释放到本地缓存再加载。</summary>
+        public byte[]? EmbeddedDll { get; set; }
 
         /// <summary>把配置追加到可执行文件末尾。</summary>
         public static void AppendTo(string executablePath, PlayerConfig config)
@@ -72,6 +77,9 @@ namespace ErrorReportLauncher
                 writer.Write(config.Icon ?? "none");
                 writer.Write(config.Buttons ?? string.Empty);
                 writer.Write(config.HideCloseButton);
+                byte[] embeddedDll = config.EmbeddedDll ?? Array.Empty<byte>();
+                writer.Write(embeddedDll.Length);
+                writer.Write(embeddedDll);
                 payload = stream.ToArray();
             }
 
@@ -103,8 +111,17 @@ namespace ErrorReportLauncher
                 }
 
                 file.Seek(-headerLength, SeekOrigin.End);
-                byte[] magic = ReadExactly(file, Magic.Length);
-                if (!BytesEqual(magic, Magic))
+                byte[] magic = ReadExactly(file, 8);
+                bool legacyFormat;
+                if (BytesEqual(magic, Magic))
+                {
+                    legacyFormat = false;
+                }
+                else if (BytesEqual(magic, LegacyMagic))
+                {
+                    legacyFormat = true;
+                }
+                else
                 {
                     return false;
                 }
@@ -120,7 +137,8 @@ namespace ErrorReportLauncher
 
                 using var stream = new MemoryStream(payload, writable: false);
                 using var reader = new BinaryReader(stream, Encoding.UTF8);
-                if (reader.ReadInt32() != FormatVersion)
+                int version = reader.ReadInt32();
+                if (legacyFormat ? version != LegacyFormatVersion : version != FormatVersion)
                 {
                     return false;
                 }
@@ -143,6 +161,21 @@ namespace ErrorReportLauncher
                     Buttons = reader.ReadString(),
                     HideCloseButton = reader.ReadInt32(),
                 };
+
+                if (!legacyFormat)
+                {
+                    if (stream.Position + 4 > stream.Length)
+                    {
+                        return false;
+                    }
+
+                    int dllLength = reader.ReadInt32();
+                    if (dllLength < 0 || dllLength > stream.Length - stream.Position)
+                    {
+                        return false;
+                    }
+                    result.EmbeddedDll = reader.ReadBytes(dllLength);
+                }
 
                 if (!Enum.IsDefined(typeof(ReportFunction), result.Function))
                 {

@@ -34,7 +34,7 @@ namespace ErrorReportLauncher
 
         private readonly TextBox _logFolder = new TextBox();
         private readonly Button _browseButton = new Button();
-        private readonly Bitmap _browseIcon = CreateFolderIcon();
+        private Bitmap _browseIcon = CreateFolderIcon(16);
         private readonly Button _generateButton = new Button();
         private readonly Label _statusLabel = new Label();
 
@@ -44,14 +44,13 @@ namespace ErrorReportLauncher
         {
             Text = "ErrorReportMain 官方启动器";
             Font = new Font("Microsoft YaHei UI", 9F);
-            AutoScaleDimensions = new SizeF(96F, 96F);
-            AutoScaleMode = AutoScaleMode.Dpi;
             StartPosition = FormStartPosition.CenterScreen;
             ClientSize = new Size(700, 650);
             MinimumSize = new Size(720, 620);
             AutoScroll = true;
             BackColor = Color.FromArgb(248, 248, 248);
             DoubleBuffered = true;
+            AutoScaleMode = AutoScaleMode.None;
 
             CreateControls();
             BuildLayout();
@@ -684,11 +683,12 @@ namespace ErrorReportLauncher
             return string.IsNullOrEmpty(value) ? fallback : value;
         }
 
-        private static Bitmap CreateFolderIcon()
+        private static Bitmap CreateFolderIcon(int size)
         {
-            var bitmap = new Bitmap(16, 16);
+            var bitmap = new Bitmap(size, size);
             using var graphics = Graphics.FromImage(bitmap);
             graphics.Clear(Color.Transparent);
+            graphics.ScaleTransform(size / 16f, size / 16f);
             using var tab = new SolidBrush(Color.FromArgb(220, 170, 60));
             using var body = new SolidBrush(Color.FromArgb(245, 205, 100));
             using var outline = new Pen(Color.FromArgb(150, 115, 40));
@@ -696,6 +696,38 @@ namespace ErrorReportLauncher
             graphics.FillRectangle(body, 1, 5, 14, 9);
             graphics.DrawRectangle(outline, 1, 5, 13, 8);
             return bitmap;
+        }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+
+            float scale = DeviceDpi / 96f;
+            if (scale <= 1.01f)
+            {
+                return;
+            }
+
+            SuspendLayout();
+            Scale(new SizeF(scale, scale));
+            ClientSize = new Size(
+                (int)Math.Round(700 * scale),
+                (int)Math.Round(650 * scale));
+            MinimumSize = new Size(
+                (int)Math.Round(720 * scale),
+                (int)Math.Round(620 * scale));
+            ResumeLayout(performLayout: true);
+
+            int iconSize = Math.Max(16, (int)Math.Round(16 * scale));
+            if (_browseIcon.Width != iconSize)
+            {
+                Bitmap icon = CreateFolderIcon(iconSize);
+                _browseButton.Image = icon;
+                _browseIcon.Dispose();
+                _browseIcon = icon;
+            }
+
+            CenterToScreen();
         }
 
         protected override void Dispose(bool disposing)

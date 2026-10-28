@@ -4,8 +4,8 @@ using System.IO;
 namespace ErrorReportLauncher
 {
     /// <summary>
-    /// 生成单文件播放器：复制启动器 exe，复制 ErrorReportMain.dll 到目标目录，
-    /// 然后把配置追加到 exe 末尾。
+    /// 生成单文件播放器：复制启动器 exe，把 x64 DLL 和配置一起追加到末尾。
+    /// 生成后的 exe 可以单独移动，不再依赖旁边的 ErrorReportMain.dll。
     /// </summary>
     public static class Generator
     {
@@ -47,16 +47,7 @@ namespace ErrorReportLauncher
             Directory.CreateDirectory(outputDirectory);
 
             File.Copy(fullLauncher, fullOutput, overwrite: true);
-
-            string dllDestination = Path.Combine(outputDirectory, Path.GetFileName(dllPath));
-            if (!string.Equals(
-                    Path.GetFullPath(dllPath),
-                    Path.GetFullPath(dllDestination),
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                File.Copy(dllPath, dllDestination, overwrite: true);
-            }
-
+            config.EmbeddedDll = File.ReadAllBytes(dllPath);
             PlayerConfig.AppendTo(fullOutput, config);
         }
     }

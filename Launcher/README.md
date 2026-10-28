@@ -9,9 +9,11 @@
 - .NET Framework 4.8（Windows 10 1903+ / Windows 11 自带）
 - Visual Studio 2026 或 .NET SDK，用来构建启动器
 - 先构建项目的 **x64 Release DLL**
-- 当前启动器按 **x64** 构建，生成 exe 也按 x64 运行，必须配 x64 的 `ErrorReportMain.dll`
-- 启动器和生成 exe 内嵌 comctl32 v6 manifest，使用 Windows 10/11 的现代按钮/图标；
-  如果把 DLL 嵌入到没有 manifest 的原生宿主里，控件会退回经典样式
+- 当前启动器按 **x64** 构建；启动器生成时需要同目录的 x64 `ErrorReportMain.dll`，
+  生成出的 exe 会把 x64 DLL 内嵌，可以单独移动
+- 启动器和生成 exe 内嵌 comctl32 v6 manifest；`App.config` 启用 system DPI awareness，
+  175% 缩放下字体和控件按物理像素渲染，不需要手动设置兼容性里的高 DPI 覆盖
+- 如果把 DLL 嵌入到没有 manifest 的原生宿主里，控件会退回经典样式
 
 ## 构建
 
@@ -70,8 +72,8 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 生成时会做三件事：
 
 1. 把启动器自身复制成目标 exe；
-2. 把 `ErrorReportMain.dll` 复制到目标 exe 同目录；
-3. 把当前配置追加到目标 exe 末尾。
+2. 读取 x64 `ErrorReportMain.dll`，和配置一起追加到目标 exe 末尾；
+3. 目标 exe 首次运行时会从内嵌数据释放 DLL 到本地缓存并加载。
 
 目标 exe 运行时：
 
@@ -79,7 +81,7 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 - 调用 DLL 弹出对应窗口；
 - 用户关闭窗口后，在配置的日志文件夹写入 `.log`。
 
-实际效果（`DLL_MISSING_ERROR`，已带 comctl32 v6 清单）：
+实际效果（`DLL_MISSING_ERROR`，175% DPI，已带 comctl32 v6 清单）：
 
 ![生成 exe 的实际弹窗](generated-popup.png)
 
@@ -111,16 +113,19 @@ User Choice: 1
 
 ```text
 你选择的目录\
-├─ ErrorReportPlayer.exe   # 启动器副本 + 末尾配置
-└─ ErrorReportMain.dll     # 播放时加载
+└─ ErrorReportPlayer.exe   # 启动器副本 + 配置 + 内嵌 x64 DLL
 ```
 
-生成 exe 需要 .NET Framework 4.8 才能运行；如果只把 exe 拷走、不带 DLL，
-播放时会提示找不到 `ErrorReportMain.dll`，并把错误写进日志。
+生成 exe 需要 .NET Framework 4.8 才能运行；但它已经把 x64 DLL 内嵌，可以单独移动，
+不需要旁边再放 `ErrorReportMain.dll`。首次运行会把 DLL 释放到
+`%LOCALAPPDATA%\ErrorReportMain\Native\`，之后复用缓存。
+
+启动器本身仍然需要同目录的 `ErrorReportMain.dll` 才能生成 exe；发布用的
+`Launcher.zip` 已包含这个 DLL 和 `ErrorReportLauncher.exe.config`。
 
 ## 限制
 
-- 启动器和生成 exe 当前都是 x64，不能配 Win32 DLL 使用。
+- 启动器和生成 exe 当前都是 x64；`ErrorReportMain-x86.dll` 只能给 32 位原生宿主使用。
 - 生成 exe 依赖 .NET Framework 4.8；不是完全原生的单文件 exe。
 - 图标只支持 `none` / `error` / `warning` / `info` / `question` 这些系统图标。
 - 自定义按钮最多 8 个，排成一行。
@@ -130,9 +135,10 @@ User Choice: 1
 ## 实现位置
 
 - `Program.cs`：检测末尾配置，决定进入启动器还是播放模式。
-- `PlayerConfig.cs`：配置结构和追加/读取逻辑。
-- `PlayerRunner.cs`：P/Invoke DLL、弹窗、写日志。
-- `Generator.cs`：复制启动器和 DLL、追加配置。
-- `app.manifest`：comctl32 v6 视觉样式清单，会随启动器和生成 exe 一起嵌入。
+- `PlayerConfig.cs`：配置结构、内嵌 DLL 数据和追加/读取逻辑。
+- `PlayerRunner.cs`：释放/加载内嵌 DLL、调用导出函数、写日志。
+- `Generator.cs`：复制启动器、读取 DLL、追加配置。
+- `app.manifest`：comctl32 v6 视觉样式和 DPI awareness 清单。
+- `App.config`：WinForms 的 system DPI awareness 设置。
 - `MainForm.cs`：下拉框、参数控件、文件夹选择、生成。
 - `PreviewPanel.cs`：GDI+ 绘制现代图标/按钮预览图。

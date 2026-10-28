@@ -276,6 +276,11 @@ manifest，所以用 `ctypes.CDLL("ErrorReportMain.dll")` 调用时是现代的�
 `Application.EnableVisualStyles()`，也建议在 exe 里嵌入这个 manifest，原生 `MessageBoxW`
 才会稳定使用当前主题。否则按钮/图标会保持经典样式，但 DLL 的文本、弹窗逻辑和返回值都不受影响。
 
+DPI 同理：启动器/生成 exe 通过 [Launcher/app.manifest](Launcher/app.manifest) 声明
+system DPI awareness，启动器再用 [Launcher/App.config](Launcher/App.config) 让 WinForms
+按物理像素布局；175% 缩放下不需要在兼容性里手动设置“替代高 DPI 缩放行为”。自定义 DLL
+本身不设置进程 DPI，实际清晰度仍由宿主进程决定。
+
 ## 官方启动器
 
 `Launcher/` 提供一个可选的 C# WinForms 启动器，不想自己写调用程序时可以用它生成
@@ -286,7 +291,7 @@ manifest，所以用 `ctypes.CDLL("ErrorReportMain.dll")` 调用时是现代的�
   按钮勾选框和隐藏关闭按钮；
 - 实时预览图；
 - 日志文件夹可直接输入，也可点右侧文件夹图标浏览选择；
-- 点击“生成 .exe”输出播放器 exe，并把 `ErrorReportMain.dll` 复制到同目录。
+- 点击“生成 .exe”输出单文件播放器，x64 DLL 会一起写入 exe 末尾；生成物可以单独移动，不再需要旁边的 `ErrorReportMain.dll`。
 
 ![启动器界面](Launcher/launcher-preset.png)
 
@@ -303,9 +308,11 @@ dotnet build Launcher/ErrorReportLauncher.csproj -c Release
 Launcher\bin\Release\net48\ErrorReportLauncher.exe
 ```
 
-启动器和生成的播放器需要 **.NET Framework 4.8**，当前按 **x64** 构建；生成 exe
-需要和 `ErrorReportMain.dll` 放在同一目录。启动器/生成 exe 已内嵌 comctl32 v6
-manifest，弹窗使用 Windows 10/11 的现代按钮和图标（见“视觉样式”）。详细说明见
+启动器和生成的播放器需要 **.NET Framework 4.8**，当前按 **x64** 构建。启动器自身生成时
+需要同目录的 x64 `ErrorReportMain.dll`（`Launcher.zip` 已包含）；生成出的 exe 会把 x64 DLL
+内嵌，可以单独移动，不再需要外部 DLL。启动器/生成 exe 已内嵌 comctl32 v6 manifest；
+`Launcher/App.config` 同时启用了 system DPI awareness，175% 缩放下会按物理像素渲染，
+不需要在兼容性里手动设置“替代高 DPI 缩放行为”。详细说明见
 [Launcher/README.md](Launcher/README.md)。
 
 ## 设计说明

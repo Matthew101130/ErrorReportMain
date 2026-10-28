@@ -44,13 +44,17 @@ namespace ErrorReportLauncher
             Graphics graphics = e.Graphics;
             graphics.SmoothingMode = SmoothingMode.AntiAlias;
 
+            float scale = DeviceDpi / 96f;
+            int S(float value) => (int)Math.Round(value * scale);
+            float SF(float value) => value * scale;
+
             Rectangle client = ClientRectangle;
             var window = new Rectangle(
-                8,
-                8,
-                Math.Max(0, client.Width - 16),
-                Math.Max(0, client.Height - 16));
-            if (window.Width < 120 || window.Height < 90)
+                S(8),
+                S(8),
+                Math.Max(0, client.Width - S(16)),
+                Math.Max(0, client.Height - S(16)));
+            if (window.Width < S(120) || window.Height < S(90))
             {
                 return;
             }
@@ -60,13 +64,13 @@ namespace ErrorReportLauncher
                 graphics.FillRectangle(background, window);
             }
 
-            const int titleHeight = 30;
+            int titleHeight = S(30);
             var titleBar = new Rectangle(window.X, window.Y, window.Width, titleHeight);
             using (var titleBackground = new SolidBrush(Color.FromArgb(240, 240, 240)))
             {
                 graphics.FillRectangle(titleBackground, titleBar);
             }
-            using (var border = new Pen(Color.FromArgb(150, 150, 150)))
+            using (var border = new Pen(Color.FromArgb(150, 150, 150), SF(1f)))
             {
                 graphics.DrawRectangle(border, window);
             }
@@ -75,35 +79,35 @@ namespace ErrorReportLauncher
                 graphics,
                 _data.Title,
                 Font,
-                new Rectangle(window.X + 10, window.Y, window.Width - 50, titleHeight),
+                new Rectangle(window.X + S(10), window.Y, window.Width - S(50), titleHeight),
                 Color.Black,
                 TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
 
             if (!_data.HideClose)
             {
-                int x = window.Right - 22;
-                int y = window.Y + 9;
-                using var closePen = new Pen(Color.FromArgb(90, 90, 90), 1.5f);
-                graphics.DrawLine(closePen, x, y, x + 8, y + 8);
-                graphics.DrawLine(closePen, x + 8, y, x, y + 8);
+                int x = window.Right - S(22);
+                int y = window.Y + S(9);
+                using var closePen = new Pen(Color.FromArgb(90, 90, 90), SF(1.5f));
+                graphics.DrawLine(closePen, x, y, x + S(8), y + S(8));
+                graphics.DrawLine(closePen, x + S(8), y, x, y + S(8));
             }
 
-            int contentLeft = window.X + 16;
-            int contentTop = titleBar.Bottom + 14;
-            using (Bitmap? icon = CreateModernIcon(_data.Icon, 32))
+            int contentLeft = window.X + S(16);
+            int contentTop = titleBar.Bottom + S(14);
+            using (Bitmap? icon = CreateModernIcon(_data.Icon, S(32)))
             {
                 if (icon is not null)
                 {
-                    graphics.DrawImage(icon, contentLeft, contentTop, 32, 32);
-                    contentLeft += 44;
+                    graphics.DrawImage(icon, contentLeft, contentTop, S(32), S(32));
+                    contentLeft += S(44);
                 }
             }
 
             var bodyRectangle = new Rectangle(
                 contentLeft,
                 contentTop,
-                Math.Max(40, window.Right - contentLeft - 16),
-                Math.Max(20, window.Bottom - contentTop - 54));
+                Math.Max(S(40), window.Right - contentLeft - S(16)),
+                Math.Max(S(20), window.Bottom - contentTop - S(54)));
             TextRenderer.DrawText(
                 graphics,
                 _data.Body,
@@ -116,10 +120,10 @@ namespace ErrorReportLauncher
                 | TextFormatFlags.EndEllipsis);
 
             string[] labels = _data.Buttons.Length > 0 ? _data.Buttons : new[] { "确定" };
-            const int buttonHeight = 26;
-            const int gap = 8;
-            const int horizontalPadding = 12;
-            const int minimumButtonWidth = 66;
+            int buttonHeight = S(26);
+            int gap = S(8);
+            int horizontalPadding = S(12);
+            int minimumButtonWidth = S(66);
 
             var widths = new int[labels.Length];
             for (int i = 0; i < labels.Length; i++)
@@ -129,19 +133,19 @@ namespace ErrorReportLauncher
             }
 
             int totalWidth = widths.Sum() + gap * (labels.Length - 1);
-            int availableWidth = window.Width - 32;
+            int availableWidth = window.Width - S(32);
             if (totalWidth > availableWidth && totalWidth > 0)
             {
-                double scale = (double)availableWidth / totalWidth;
+                double widthScale = (double)availableWidth / totalWidth;
                 for (int i = 0; i < widths.Length; i++)
                 {
-                    widths[i] = Math.Max(30, (int)(widths[i] * scale));
+                    widths[i] = Math.Max(S(30), (int)(widths[i] * widthScale));
                 }
                 totalWidth = widths.Sum() + gap * (labels.Length - 1);
             }
 
-            int buttonX = window.Right - 16 - totalWidth;
-            int buttonY = window.Bottom - 16 - buttonHeight;
+            int buttonX = window.Right - S(16) - totalWidth;
+            int buttonY = window.Bottom - S(16) - buttonHeight;
             for (int i = 0; i < labels.Length; i++)
             {
                 var buttonRectangle = new Rectangle(buttonX, buttonY, widths[i], buttonHeight);
@@ -149,19 +153,19 @@ namespace ErrorReportLauncher
                 {
                     graphics.FillRectangle(buttonBackground, buttonRectangle);
                 }
-                using (var buttonBorder = new Pen(Color.FromArgb(200, 200, 200)))
+                using (var buttonBorder = new Pen(Color.FromArgb(200, 200, 200), SF(1f)))
                 {
                     graphics.DrawRectangle(buttonBorder, buttonRectangle);
                 }
                 if (i == 0)
                 {
-                    using var focusPen = new Pen(Color.FromArgb(0, 120, 212), 1.5f);
+                    using var focusPen = new Pen(Color.FromArgb(0, 120, 212), SF(1.5f));
                     graphics.DrawRectangle(
                         focusPen,
-                        buttonRectangle.X + 1,
-                        buttonRectangle.Y + 1,
-                        Math.Max(0, buttonRectangle.Width - 3),
-                        Math.Max(0, buttonRectangle.Height - 3));
+                        buttonRectangle.X + S(1),
+                        buttonRectangle.Y + S(1),
+                        Math.Max(0, buttonRectangle.Width - S(3)),
+                        Math.Max(0, buttonRectangle.Height - S(3)));
                 }
                 TextRenderer.DrawText(
                     graphics,
