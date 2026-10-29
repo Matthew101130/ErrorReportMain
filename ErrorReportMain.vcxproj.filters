@@ -29,6 +29,9 @@
     <ClInclude Include="include\ErrorReport\CustomError.h">
       <Filter>头文件\公共接口</Filter>
     </ClInclude>
+    <ClInclude Include="include\ErrorReport\CustomMessageBox.h">
+      <Filter>头文件\公共接口</Filter>
+    </ClInclude>
     <ClInclude Include="include\ErrorReport\DLLMissingError.h">
       <Filter>头文件\公共接口</Filter>
     </ClInclude>
@@ -41,8 +44,8 @@
     <ClInclude Include="include\ErrorReport\MemoryError.h">
       <Filter>头文件\公共接口</Filter>
     </ClInclude>
-    <ClInclude Include="src\Detail\MessageBoxError.h">
-      <Filter>头文件</Filter>
+    <ClInclude Include="include\ErrorReport\Detail\MessageBoxError.h">
+      <Filter>头文件\公共接口</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -50,6 +53,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="src\CustomError.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\CustomMessageBox.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="src\dllmain.cpp">

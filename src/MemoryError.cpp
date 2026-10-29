@@ -2,7 +2,7 @@
 
 #include "ErrorReport/MemoryError.h"
 
-#include "Detail/MessageBoxError.h"
+#include "ErrorReport/Detail/MessageBoxError.h"
 
 int MEMORY_ERROR(const wchar_t* ErrorProgram, const wchar_t* Operate, const wchar_t* Address, const wchar_t* CannotBe) {
     using errorreport::detail::ShowErrorBox;

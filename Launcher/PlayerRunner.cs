@@ -44,6 +44,13 @@ namespace ErrorReportLauncher
             [MarshalAs(UnmanagedType.LPWStr)] string buttons,
             int hideCloseButton);
 
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
+        private delegate int CustomMessageBoxFn(
+            [MarshalAs(UnmanagedType.LPWStr)] string title,
+            [MarshalAs(UnmanagedType.LPWStr)] string text,
+            [MarshalAs(UnmanagedType.LPWStr)] string icon,
+            [MarshalAs(UnmanagedType.LPWStr)] string buttons);
+
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         private static extern IntPtr LoadLibraryW(string fileName);
 
@@ -70,6 +77,7 @@ namespace ErrorReportLauncher
                 var exeError = GetFunction<ExeErrorFn>("EXE_ERROR");
                 var memoryError = GetFunction<MemoryErrorFn>("MEMORY_ERROR");
                 var customError = GetFunction<CustomErrorFn>("CUSTOM_ERROR");
+                var customMessageBox = GetFunction<CustomMessageBoxFn>("CUSTOM_MESSAGEBOX");
 
                 result = config.Function switch
                 {
@@ -81,6 +89,8 @@ namespace ErrorReportLauncher
                         config.ErrorProgram, config.Operate, config.MemoryAddress, config.CannotBe),
                     ReportFunction.Custom => customError(
                         config.Title, config.Text, config.Icon, config.Buttons, config.HideCloseButton),
+                    ReportFunction.CustomMessageBox => customMessageBox(
+                        config.Title, config.Text, config.Icon, config.Buttons),
                     _ => -2,
                 };
             }
@@ -267,6 +277,12 @@ namespace ErrorReportLauncher
                     builder.AppendLine($"Buttons: {config.Buttons}");
                     builder.AppendLine($"HideCloseButton: {config.HideCloseButton}");
                     break;
+                case ReportFunction.CustomMessageBox:
+                    builder.AppendLine($"Title: {config.Title}");
+                    builder.AppendLine($"Text: {config.Text}");
+                    builder.AppendLine($"Icon: {config.Icon}");
+                    builder.AppendLine($"Buttons: {config.Buttons}");
+                    break;
             }
 
             builder.AppendLine($"User Choice: {result}");
@@ -286,6 +302,7 @@ namespace ErrorReportLauncher
                 ReportFunction.ExeError => "EXE_ERROR",
                 ReportFunction.MemoryError => "MEMORY_ERROR",
                 ReportFunction.Custom => "CUSTOM_ERROR",
+                ReportFunction.CustomMessageBox => "CUSTOM_MESSAGEBOX",
                 _ => function.ToString(),
             };
         }

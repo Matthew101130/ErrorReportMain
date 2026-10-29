@@ -11,6 +11,7 @@ namespace ErrorReportLauncher
         ExeError = 1,
         MemoryError = 2,
         Custom = 3,
+        CustomMessageBox = 4,
     }
 
     /// <summary>

@@ -1,6 +1,6 @@
 #include "pch.h"
 
-#include "Detail/MessageBoxError.h"
+#include "ErrorReport/Detail/MessageBoxError.h"
 
 namespace errorreport::detail {
 namespace {
@@ -35,8 +35,10 @@ std::wstring ToWString(const wchar_t* value, const wchar_t* fallback) {
 
 std::wstring MakeErrorTitle(const wchar_t* errorProgram, const wchar_t* category) {
     std::wstring title = ToWString(errorProgram, kUnknownProgram);
-    title += L" - ";
-    title += ToWString(category, L"错误");
+    if (category != nullptr && category[0] != L'\0') {
+        title += L" - ";
+        title += ToWString(category, L"错误");
+    }
     return title;
 }
 

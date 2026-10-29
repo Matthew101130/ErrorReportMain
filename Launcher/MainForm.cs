@@ -28,6 +28,7 @@ namespace ErrorReportLauncher
         private readonly TextBox _customTitle = new TextBox();
         private readonly TextBox _customText = new TextBox();
         private readonly ComboBox _customIcon = new ComboBox();
+        private readonly ComboBox _messageBoxButtonsCombo = new ComboBox();
         private readonly CheckBox _hideClose = new CheckBox();
         private readonly FlowLayoutPanel _buttonsPanel = new FlowLayoutPanel();
         private CheckBox[] _buttonChecks = Array.Empty<CheckBox>();
@@ -65,6 +66,7 @@ namespace ErrorReportLauncher
             _functions.Add(new FunctionOption(ReportFunction.ExeError, "EXE_ERROR — 应用程序异常"));
             _functions.Add(new FunctionOption(ReportFunction.MemoryError, "MEMORY_ERROR — 内存错误"));
             _functions.Add(new FunctionOption(ReportFunction.Custom, "CUSTOM_ERROR — 自定义窗口"));
+            _functions.Add(new FunctionOption(ReportFunction.CustomMessageBox, "CUSTOM_MESSAGEBOX — 自定义消息框"));
             foreach (FunctionOption option in _functions)
             {
                 _functionCombo.Items.Add(option);
@@ -111,6 +113,24 @@ namespace ErrorReportLauncher
             _customIcon.Items.AddRange(new object[] { "无", "错误", "警告", "信息", "问号" });
             _customIcon.SelectedIndex = 1;
 
+            _messageBoxButtonsCombo.DropDownStyle = ComboBoxStyle.DropDown;
+            _messageBoxButtonsCombo.Items.AddRange(new object[]
+            {
+                "ok",
+                "okcancel",
+                "yesno",
+                "yesnocancel",
+                "retrycancel",
+                "abortretryignore",
+                "canceltrycontinue",
+            });
+            _messageBoxButtonsCombo.Text = "ok";
+            var messageBoxButtonsTip = new ToolTip();
+            messageBoxButtonsTip.SetToolTip(
+                _messageBoxButtonsCombo,
+                "按钮组合：abortretryignore / canceltrycontinue / ok / okcancel /\r\n"
+                + "retrycancel / yesno / yesnocancel，可加 “|help” 追加“帮助”按钮。");
+
             _hideClose.Text = "隐藏右上角关闭按钮";
             _hideClose.AutoSize = true;
 
@@ -147,6 +167,7 @@ namespace ErrorReportLauncher
             }
             _customIcon.SelectedIndexChanged += (_, _) => UpdatePreview();
             _hideClose.CheckedChanged += (_, _) => UpdatePreview();
+            _messageBoxButtonsCombo.TextChanged += (_, _) => UpdatePreview();
 
             _logFolder.Text = GetDefaultLogFolder();
             _logFolder.Dock = DockStyle.Fill;
@@ -319,6 +340,13 @@ namespace ErrorReportLauncher
                     AddRow("按钮", _buttonsPanel, 64);
                     AddRow("选项", _hideClose);
                     break;
+
+                case ReportFunction.CustomMessageBox:
+                    AddRow("标题", _customTitle);
+                    AddRow("正文", _customText, 74);
+                    AddRow("图标", _customIcon);
+                    AddRow("按钮组合", _messageBoxButtonsCombo);
+                    break;
             }
 
             _paramsTable.ResumeLayout(performLayout: true);
@@ -439,9 +467,67 @@ namespace ErrorReportLauncher
                     };
                 }
 
+                case ReportFunction.CustomMessageBox:
+                {
+                    return new PreviewData
+                    {
+                        Title = TextOr(_customTitle.Text, "错误"),
+                        Body = _customText.Text,
+                        Icon = GetSelectedIconKey(),
+                        Buttons = GetMessageBoxButtonLabels(_messageBoxButtonsCombo.Text),
+                    };
+                }
+
                 default:
                     return new PreviewData();
             }
+        }
+
+        // 把 CUSTOM_MESSAGEBOX 的按钮组合参数映射成预览用的按钮文本；
+        // 实际按钮文本由系统语言决定，这里用中文近似示意。
+        private static string[] GetMessageBoxButtonLabels(string spec)
+        {
+            bool hasHelp = false;
+            string? setLabel = null;
+            foreach (string token in spec.Split('|'))
+            {
+                string key = token.Trim();
+                if (key.Length == 0)
+                {
+                    continue;
+                }
+
+                if (string.Equals(key, "help", StringComparison.OrdinalIgnoreCase))
+                {
+                    hasHelp = true;
+                    continue;
+                }
+
+                setLabel = key.ToLowerInvariant() switch
+                {
+                    "ok" => "确定",
+                    "okcancel" => "确定|取消",
+                    "yesno" => "是|否",
+                    "yesnocancel" => "是|否|取消",
+                    "retrycancel" => "重试|取消",
+                    "abortretryignore" => "中止|重试|忽略",
+                    "canceltrycontinue" => "取消|重试|继续",
+                    _ => null,
+                };
+                if (setLabel is not null)
+                {
+                    break;
+                }
+            }
+
+            List<string> labels = setLabel is not null
+                ? new List<string>(setLabel.Split('|'))
+                : new List<string> { "确定" };
+            if (hasHelp)
+            {
+                labels.Add("帮助");
+            }
+            return labels.ToArray();
         }
 
         private string GetSelectedIconKey()
@@ -641,6 +727,12 @@ namespace ErrorReportLauncher
                         "|",
                         _buttonChecks.Where(checkBox => checkBox.Checked).Select(checkBox => checkBox.Text));
                     config.HideCloseButton = _hideClose.Checked ? 1 : 0;
+                    break;
+                case ReportFunction.CustomMessageBox:
+                    config.Title = _customTitle.Text;
+                    config.Text = _customText.Text;
+                    config.Icon = GetSelectedIconKey();
+                    config.Buttons = _messageBoxButtonsCombo.Text.Trim();
                     break;
             }
 

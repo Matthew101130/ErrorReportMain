@@ -132,12 +132,13 @@
     <ClInclude Include="framework.h" />
     <ClInclude Include="include\ErrorReport.h" />
     <ClInclude Include="include\ErrorReport\CustomError.h" />
+    <ClInclude Include="include\ErrorReport\CustomMessageBox.h" />
     <ClInclude Include="include\ErrorReport\DLLMissingError.h" />
     <ClInclude Include="include\ErrorReport\ExeError.h" />
     <ClInclude Include="include\ErrorReport\Export.h" />
     <ClInclude Include="include\ErrorReport\MemoryError.h" />
     <ClInclude Include="pch.h" />
-    <ClInclude Include="src\Detail\MessageBoxError.h" />
+    <ClInclude Include="include\ErrorReport\Detail\MessageBoxError.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -147,6 +148,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\CustomError.cpp" />
+    <ClCompile Include="src\CustomMessageBox.cpp" />
     <ClCompile Include="src\dllmain.cpp" />
     <ClCompile Include="src\DLLMissingError.cpp" />
     <ClCompile Include="src\ExeError.cpp" />

@@ -38,24 +38,36 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 
 ## 使用
 
-1. 第一行下拉框选择四个接口之一：
+1. 第一行下拉框选择五个接口之一：
    - `DLL_MISSING_ERROR`：只显示程序名、缺失模块。
    - `EXE_ERROR`：只显示程序名、异常名、错误代码、地址。
    - `MEMORY_ERROR`：只显示程序名、指令地址、被引用地址、访问类型。
    - `CUSTOM_ERROR`：标题、正文、图标下拉框、按钮勾选框、隐藏关闭按钮。
+   - `CUSTOM_MESSAGEBOX`：标题、正文、图标下拉框、按钮组合下拉框（`MessageBoxW`
+     标准按钮组合，如 `ok` / `okcancel` / `yesnocancel`；支持手动输入合法值，
+     可加 `|help` 追加帮助按钮）。
 2. 中间是实时预览图，会跟随参数变化。
 3. 底部“日志文件夹”可以：
    - 直接输入路径；
    - 或点击右侧文件夹图标，在弹出的浏览器中选择一个文件夹并确定。
 4. 点击“生成 .exe”，选择保存位置。
 
-自定义模式的按钮勾选框目前固定提供：
+自定义模式（`CUSTOM_ERROR`）的按钮勾选框目前固定提供：
 
 ```text
 确定 / 取消 / 是 / 否 / 重试 / 忽略 / 中止 / 继续
 ```
 
 全部不勾选时，DLL 会使用默认的“确定”。
+
+`CUSTOM_MESSAGEBOX` 模式的“按钮组合”下拉框提供 `MessageBoxW` 的全部标准按钮组合：
+
+```text
+ok / okcancel / yesno / yesnocancel / retrycancel / abortretryignore / canceltrycontinue
+```
+
+下拉框可以手动输入，允许写成 `yesno|help` 之类的追加形式；未知组合会让生成的
+exe 在弹窗时返回 `-2`（不弹窗）。
 
 ### 界面预览
 
@@ -107,6 +119,9 @@ User Choice: 1
 
 - 前三个接口：`IDOK` = 1，`IDCANCEL` = 2；
 - `CUSTOM_ERROR`：0 基按钮索引，`-1` 关闭，`-2` 失败；
+- `CUSTOM_MESSAGEBOX`：`MessageBoxW` 标准返回值（`IDOK` = 1、`IDCANCEL` = 2、`IDABORT` = 3、
+  `IDRETRY` = 4、`IDIGNORE` = 5、`IDYES` = 6、`IDNO` = 7、`IDHELP` = 9、`IDTRYAGAIN` = 10、
+  `IDCONTINUE` = 11），`-2` 表示按钮组合参数错误；
 - `MessageBoxW` 自身失败时可能是 0。
 
 ## 生成物说明
