@@ -171,7 +171,10 @@ namespace ErrorReportLauncher
             var runtimeTip = new ToolTip();
             runtimeTip.SetToolTip(
                 _useRuntimeFolder,
-                "勾选后，生成的程序会把日志写在它自己所在的文件夹，忽略上面指定的日志文件夹。");
+                "勾选后，生成的程序会把日志写在它自己所在的文件夹，此时日志文件夹输入框被禁用；\n"
+                + "取消勾选则日志固定写在上面指定的日志文件夹。");
+            _useRuntimeFolder.CheckedChanged += (_, _) => UpdateLogFolderEnabledState();
+            UpdateLogFolderEnabledState();
 
             _generateButton.Text = "生成 .exe";
             _generateButton.Width = 120;
@@ -456,6 +459,14 @@ namespace ErrorReportLauncher
                 default:
                     return "none";
             }
+        }
+
+        private void UpdateLogFolderEnabledState()
+        {
+            // 勾选“日志生成在运行文件夹”时，日志文件夹输入无效，禁用输入框和浏览按钮。
+            bool runtimeFolder = _useRuntimeFolder.Checked;
+            _logFolder.Enabled = !runtimeFolder;
+            _browseButton.Enabled = !runtimeFolder;
         }
 
         private void BrowseLogFolder()
