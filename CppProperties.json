@@ -1,0 +1,26 @@
+{
+  "configurations": [
+    {
+      "inheritEnvironments": [
+        "msvc_x64"
+      ],
+      "name": "x64-Release",
+      "includePath": [
+        "${env.INCLUDE}",
+        "${workspaceRoot}",
+        "${workspaceRoot}\\include",
+        "${workspaceRoot}\\src"
+      ],
+      "defines": [
+        "WIN32",
+        "NDEBUG",
+        "UNICODE",
+        "_UNICODE",
+        "_WINDOWS",
+        "_USRDLL",
+        "ERRORREPORTMAIN_EXPORTS"
+      ],
+      "intelliSenseMode": "windows-msvc-x64"
+    }
+  ]
+}

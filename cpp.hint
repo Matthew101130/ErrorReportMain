@@ -1,0 +1,4 @@
+// 提示文件帮助 Visual Studio IDE 解释 Visual C++ 标识符，
+// 如函数和宏的名称。
+// 构建 DLL 时 ERRORREPORT_API 为空，导出名由 ErrorReportMain.def 固定。
+#define ERRORREPORT_API
