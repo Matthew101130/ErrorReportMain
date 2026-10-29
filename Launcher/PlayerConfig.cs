@@ -19,13 +19,18 @@ namespace ErrorReportLauncher
     /// </summary>
     public sealed class PlayerConfig
     {
-        private static readonly byte[] Magic = Encoding.ASCII.GetBytes("ERLPAY02");
+        private static readonly byte[] Magic = Encoding.ASCII.GetBytes("ERLPAY03");
+        private static readonly byte[] LegacyMagic2 = Encoding.ASCII.GetBytes("ERLPAY02");
         private static readonly byte[] LegacyMagic = Encoding.ASCII.GetBytes("ERLPAY01");
-        private const int FormatVersion = 2;
+        private const int FormatVersion = 3;
+        private const int LegacyFormatVersion2 = 2;
         private const int LegacyFormatVersion = 1;
 
         public ReportFunction Function { get; set; }
         public string LogFolder { get; set; } = string.Empty;
+
+        /// <summary>true 时忽略 LogFolder，日志写在播放器自己所在的文件夹。</summary>
+        public bool UseRuntimeFolder { get; set; }
 
         public string ErrorProgram { get; set; } = string.Empty;
         public string MissingDll { get; set; } = string.Empty;
@@ -77,6 +82,7 @@ namespace ErrorReportLauncher
                 writer.Write(config.Icon ?? "none");
                 writer.Write(config.Buttons ?? string.Empty);
                 writer.Write(config.HideCloseButton);
+                writer.Write(config.UseRuntimeFolder);
                 byte[] embeddedDll = config.EmbeddedDll ?? Array.Empty<byte>();
                 writer.Write(embeddedDll.Length);
                 writer.Write(embeddedDll);
@@ -112,14 +118,18 @@ namespace ErrorReportLauncher
 
                 file.Seek(-headerLength, SeekOrigin.End);
                 byte[] magic = ReadExactly(file, 8);
-                bool legacyFormat;
+                int formatVersion;
                 if (BytesEqual(magic, Magic))
                 {
-                    legacyFormat = false;
+                    formatVersion = FormatVersion;
+                }
+                else if (BytesEqual(magic, LegacyMagic2))
+                {
+                    formatVersion = LegacyFormatVersion2;
                 }
                 else if (BytesEqual(magic, LegacyMagic))
                 {
-                    legacyFormat = true;
+                    formatVersion = LegacyFormatVersion;
                 }
                 else
                 {
@@ -137,8 +147,7 @@ namespace ErrorReportLauncher
 
                 using var stream = new MemoryStream(payload, writable: false);
                 using var reader = new BinaryReader(stream, Encoding.UTF8);
-                int version = reader.ReadInt32();
-                if (legacyFormat ? version != LegacyFormatVersion : version != FormatVersion)
+                if (reader.ReadInt32() != formatVersion)
                 {
                     return false;
                 }
@@ -162,8 +171,18 @@ namespace ErrorReportLauncher
                     HideCloseButton = reader.ReadInt32(),
                 };
 
-                if (!legacyFormat)
+                if (formatVersion >= LegacyFormatVersion2)
                 {
+                    if (formatVersion >= FormatVersion)
+                    {
+                        if (stream.Position + 1 > stream.Length)
+                        {
+                            return false;
+                        }
+
+                        result.UseRuntimeFolder = reader.ReadBoolean();
+                    }
+
                     if (stream.Position + 4 > stream.Length)
                     {
                         return false;

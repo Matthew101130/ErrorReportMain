@@ -52,7 +52,7 @@ namespace ErrorReportLauncher
 
         public static void Run(PlayerConfig config)
         {
-            string logFolder = config.LogFolder ?? string.Empty;
+            string logFolder = ResolveLogFolder(config);
             string? error = null;
             int result = -2;
 
@@ -115,6 +115,17 @@ namespace ErrorReportLauncher
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
             }
+        }
+
+        private static string ResolveLogFolder(PlayerConfig config)
+        {
+            if (config.UseRuntimeFolder)
+            {
+                // 勾选“日志生成在运行文件夹”时，日志跟随播放器自身所在的文件夹。
+                return AppContext.BaseDirectory;
+            }
+
+            return config.LogFolder ?? string.Empty;
         }
 
         private static void EnsureModule(PlayerConfig config)

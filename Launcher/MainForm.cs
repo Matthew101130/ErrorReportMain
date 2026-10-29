@@ -33,6 +33,7 @@ namespace ErrorReportLauncher
         private CheckBox[] _buttonChecks = Array.Empty<CheckBox>();
 
         private readonly TextBox _logFolder = new TextBox();
+        private readonly CheckBox _useRuntimeFolder = new CheckBox();
         private readonly Button _browseButton = new Button();
         private Bitmap _browseIcon = CreateFolderIcon(16);
         private readonly Button _generateButton = new Button();
@@ -162,6 +163,16 @@ namespace ErrorReportLauncher
             var browseTip = new ToolTip();
             browseTip.SetToolTip(_browseButton, "选择日志文件夹");
 
+            _useRuntimeFolder.Text = "日志生成在运行文件夹";
+            _useRuntimeFolder.AutoSize = true;
+            _useRuntimeFolder.Checked = true;
+            _useRuntimeFolder.Margin = new Padding(0, 8, 0, 4);
+            _useRuntimeFolder.CheckAlign = ContentAlignment.MiddleLeft;
+            var runtimeTip = new ToolTip();
+            runtimeTip.SetToolTip(
+                _useRuntimeFolder,
+                "勾选后，生成的程序会把日志写在它自己所在的文件夹，忽略上面指定的日志文件夹。");
+
             _generateButton.Text = "生成 .exe";
             _generateButton.Width = 120;
             _generateButton.Height = 32;
@@ -214,7 +225,7 @@ namespace ErrorReportLauncher
             {
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                ColumnCount = 3,
+                ColumnCount = 4,
                 RowCount = 1,
                 Dock = DockStyle.Top,
                 Margin = new Padding(0, 8, 0, 0),
@@ -222,6 +233,7 @@ namespace ErrorReportLauncher
             logPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92F));
             logPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             logPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 44F));
+            logPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             logPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             logPanel.Controls.Add(new Label
             {
@@ -232,6 +244,7 @@ namespace ErrorReportLauncher
             }, 0, 0);
             logPanel.Controls.Add(_logFolder, 1, 0);
             logPanel.Controls.Add(_browseButton, 2, 0);
+            logPanel.Controls.Add(_useRuntimeFolder, 3, 0);
             _content.Controls.Add(logPanel, 0, 3);
 
             var bottomPanel = new FlowLayoutPanel
@@ -462,45 +475,62 @@ namespace ErrorReportLauncher
         private void GenerateExecutable()
         {
             string logFolder = _logFolder.Text.Trim();
-            if (logFolder.Length == 0)
+            if (!_useRuntimeFolder.Checked)
             {
-                MessageBox.Show(this, "请填写日志文件夹。", "ErrorReportMain",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            try
-            {
-                logFolder = Path.GetFullPath(logFolder);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(this, "日志文件夹路径无效：\n" + ex.Message, "ErrorReportMain",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            if (!Directory.Exists(logFolder))
-            {
-                DialogResult create = MessageBox.Show(
-                    this,
-                    $"日志文件夹不存在：\n{logFolder}\n\n是否创建？",
-                    "ErrorReportMain",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Question);
-                if (create != DialogResult.Yes)
+                if (logFolder.Length == 0)
                 {
+                    MessageBox.Show(this, "请填写日志文件夹。", "ErrorReportMain",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
+
                 try
                 {
-                    Directory.CreateDirectory(logFolder);
+                    logFolder = Path.GetFullPath(logFolder);
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(this, "无法创建日志文件夹：\n" + ex.Message, "ErrorReportMain",
-                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(this, "日志文件夹路径无效：\n" + ex.Message, "ErrorReportMain",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
+                }
+
+                if (!Directory.Exists(logFolder))
+                {
+                    DialogResult create = MessageBox.Show(
+                        this,
+                        $"日志文件夹不存在：\n{logFolder}\n\n是否创建？",
+                        "ErrorReportMain",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question);
+                    if (create != DialogResult.Yes)
+                    {
+                        return;
+                    }
+                    try
+                    {
+                        Directory.CreateDirectory(logFolder);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(this, "无法创建日志文件夹：\n" + ex.Message, "ErrorReportMain",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                }
+            }
+            else
+            {
+                // 日志跟随生成程序的运行文件夹，这里只为“另存为”对话框准备一个初始目录。
+                try
+                {
+                    logFolder = logFolder.Length > 0
+                        ? Path.GetFullPath(logFolder)
+                        : GetDefaultLogFolder();
+                }
+                catch (Exception)
+                {
+                    logFolder = GetDefaultLogFolder();
                 }
             }
 
@@ -571,6 +601,7 @@ namespace ErrorReportLauncher
             {
                 Function = option.Kind,
                 LogFolder = logFolder,
+                UseRuntimeFolder = _useRuntimeFolder.Checked,
             };
 
             switch (option.Kind)
@@ -670,12 +701,12 @@ namespace ErrorReportLauncher
 
         private static string GetDefaultLogFolder()
         {
-            string documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            if (string.IsNullOrEmpty(documents))
+            string current = Environment.CurrentDirectory;
+            if (string.IsNullOrEmpty(current))
             {
-                documents = AppContext.BaseDirectory;
+                current = AppContext.BaseDirectory;
             }
-            return Path.Combine(documents, "ErrorReportLogs");
+            return current;
         }
 
         private static string TextOr(string value, string fallback)
