@@ -334,9 +334,10 @@ manifest，所以用 `ctypes.CDLL("ErrorReportMain.dll")` 调用时是现代的�
 才会稳定使用当前主题。否则按钮/图标会保持经典样式，但 DLL 的文本、弹窗逻辑和返回值都不受影响。
 
 DPI 同理：启动器/生成 exe 通过 [Launcher/app.manifest](Launcher/app.manifest) 声明
-system DPI awareness，启动器再用 [Launcher/App.config](Launcher/App.config) 让 WinForms
-按物理像素布局；175% 缩放下不需要在兼容性里手动设置“替代高 DPI 缩放行为”。自定义 DLL
-本身不设置进程 DPI，实际清晰度仍由宿主进程决定。
+system DPI awareness；启动器用 [Launcher/DpiHelper.cs](Launcher/DpiHelper.cs) 从窗口读取
+实际 DPI 并按物理像素布局，不再依赖外部 `ErrorReportLauncher.exe.config`。175% 缩放下
+不需要在兼容性里手动设置“替代高 DPI 缩放行为”。自定义 DLL 本身不设置进程 DPI，
+实际清晰度仍由宿主进程决定。
 
 ## 官方启动器
 
@@ -369,8 +370,8 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 启动器和生成的播放器需要 **.NET Framework 4.8**，当前按 **x64** 构建。启动器自身生成时
 需要同目录的 x64 `ErrorReportMain.dll`（`Launcher.zip` 已包含）；生成出的 exe 会把 x64 DLL
 内嵌，可以单独移动，不再需要外部 DLL。启动器/生成 exe 已内嵌 comctl32 v6 manifest；
-`Launcher/App.config` 同时启用了 system DPI awareness，175% 缩放下会按物理像素渲染，
-不需要在兼容性里手动设置“替代高 DPI 缩放行为”。详细说明见
+启动器通过 `DpiHelper` 读取实际 DPI 并手动缩放，不再需要 `ErrorReportLauncher.exe.config`，
+175% 缩放下会按物理像素渲染，不需要在兼容性里手动设置“替代高 DPI 缩放行为”。详细说明见
 [Launcher/README.md](Launcher/README.md)。
 
 ## 设计说明

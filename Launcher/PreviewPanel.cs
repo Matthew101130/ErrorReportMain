@@ -44,7 +44,7 @@ namespace ErrorReportLauncher
             Graphics graphics = e.Graphics;
             graphics.SmoothingMode = SmoothingMode.AntiAlias;
 
-            float scale = DeviceDpi / 96f;
+            float scale = DpiHelper.GetScale(Handle);
             int S(float value) => (int)Math.Round(value * scale);
             float SF(float value) => value * scale;
 

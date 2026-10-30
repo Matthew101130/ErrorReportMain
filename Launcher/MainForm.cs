@@ -833,7 +833,7 @@ namespace ErrorReportLauncher
         {
             base.OnLoad(e);
 
-            float scale = DeviceDpi / 96f;
+            float scale = DpiHelper.GetScale(Handle);
             if (scale <= 1.01f)
             {
                 return;

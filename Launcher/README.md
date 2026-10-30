@@ -11,8 +11,9 @@
 - 先构建项目的 **x64 Release DLL**
 - 当前启动器按 **x64** 构建；启动器生成时需要同目录的 x64 `ErrorReportMain.dll`，
   生成出的 exe 会把 x64 DLL 内嵌，可以单独移动
-- 启动器和生成 exe 内嵌 comctl32 v6 manifest；`App.config` 启用 system DPI awareness，
-  175% 缩放下字体和控件按物理像素渲染，不需要手动设置兼容性里的高 DPI 覆盖
+- 启动器和生成 exe 内嵌 comctl32 v6 manifest；启动器通过 `DpiHelper` 读取实际 DPI 并手动缩放，
+  不再需要 `ErrorReportLauncher.exe.config`，175% 缩放下字体和控件按物理像素渲染，
+  不需要手动设置兼容性里的高 DPI 覆盖
 - 如果把 DLL 嵌入到没有 manifest 的原生宿主里，控件会退回经典样式
 
 ## 构建
@@ -135,7 +136,7 @@ User Choice: 1
 `%LOCALAPPDATA%\ErrorReportMain\Native\`，之后复用缓存。
 
 启动器本身仍然需要同目录的 `ErrorReportMain.dll` 才能生成 exe；发布用的
-`Launcher.zip` 已包含这个 DLL 和 `ErrorReportLauncher.exe.config`。
+`Launcher.zip` 已包含这个 DLL，不需要额外的 `ErrorReportLauncher.exe.config`。
 
 ## 限制
 
@@ -155,6 +156,6 @@ User Choice: 1
 - `PlayerRunner.cs`：释放/加载内嵌 DLL、调用五个导出函数、解析日志目录、写日志。
 - `Generator.cs`：复制启动器、读取 DLL、追加配置。
 - `app.manifest`：comctl32 v6 视觉样式和 DPI awareness 清单。
-- `App.config`：WinForms 的 system DPI awareness 设置。
+- `DpiHelper.cs`：用 `GetDpiForWindow` 读取实际 DPI；无 config 时也能手动缩放。
 - `MainForm.cs`：下拉框、参数控件、运行目录日志复选框、文件夹选择、生成。
 - `PreviewPanel.cs`：GDI+ 绘制现代图标/按钮预览图。
