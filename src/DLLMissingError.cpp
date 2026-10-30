@@ -2,7 +2,7 @@
 
 #include "ErrorReport/DLLMissingError.h"
 
-#include "Detail/MessageBoxError.h"
+#include "ErrorReport/Detail/MessageBoxError.h"
 
 int DLL_MISSING_ERROR(const wchar_t* ErrorProgram, const wchar_t* MissingDll) {
     using errorreport::detail::ShowErrorBox;

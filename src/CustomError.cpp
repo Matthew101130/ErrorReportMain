@@ -2,7 +2,7 @@
 
 #include "ErrorReport/CustomError.h"
 
-#include "Detail/MessageBoxError.h"
+#include "ErrorReport/Detail/MessageBoxError.h"
 
 #include <shellapi.h>
 

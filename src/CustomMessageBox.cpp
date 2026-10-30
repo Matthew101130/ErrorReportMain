@@ -2,7 +2,7 @@
 
 #include "ErrorReport/CustomMessageBox.h"
 
-#include "Detail/MessageBoxError.h"
+#include "ErrorReport/Detail/MessageBoxError.h"
 
 namespace {
 

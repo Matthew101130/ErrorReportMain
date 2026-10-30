@@ -138,7 +138,9 @@ ErrorReportMain/
 │     ├─ CustomMessageBox.h        # 标准 MessageBox 按钮的自定义消息框
 │     ├─ DLLMissingError.h
 │     ├─ ExeError.h
-│     └─ MemoryError.h
+│     ├─ MemoryError.h
+│     └─ Detail/
+│        └─ MessageBoxError.h  # 文本兜底、标题拼接、owner 选择与 MessageBoxW 封装
 ├─ src/                            # 内部实现
 │  ├─ dllmain.cpp                  # DLL 入口点（空实现）
 │  ├─ CustomError.cpp              # 自定义窗口：布局、图标、按钮、隐藏关闭按钮
@@ -147,7 +149,7 @@ ErrorReportMain/
 │  ├─ ExeError.cpp
 │  ├─ MemoryError.cpp
 │  └─ Detail/
-│     └─ MessageBoxError.h/.cpp    # 文本兜底、标题拼接、owner 选择与 MessageBoxW 封装
+│     └─ MessageBoxError.cpp   # 上面头文件的实现
 ├─ pch.h / pch.cpp                 # 预编译头（仅内部使用）
 ├─ framework.h                     # windows.h 等系统头
 └─ cpp.hint                        # VS 辅助提示

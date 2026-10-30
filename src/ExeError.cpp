@@ -2,7 +2,7 @@
 
 #include "ErrorReport/ExeError.h"
 
-#include "Detail/MessageBoxError.h"
+#include "ErrorReport/Detail/MessageBoxError.h"
 
 int EXE_ERROR(const wchar_t* ErrorProgram, const wchar_t* ErrorName, const wchar_t* ErrorCode, const wchar_t* Address) {
     using errorreport::detail::ShowErrorBox;
