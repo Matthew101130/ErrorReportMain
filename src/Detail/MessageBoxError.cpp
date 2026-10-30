@@ -1,6 +1,6 @@
 #include "pch.h"
 
-#include "Detail/MessageBoxError.h"
+#include "ErrorReport/Detail/MessageBoxError.h"
 
 namespace errorreport::detail {
 namespace {

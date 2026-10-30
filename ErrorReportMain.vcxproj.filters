@@ -44,7 +44,7 @@
     <ClInclude Include="include\ErrorReport\MemoryError.h">
       <Filter>头文件\公共接口</Filter>
     </ClInclude>
-    <ClInclude Include="src\Detail\MessageBoxError.h">
+    <ClInclude Include="include\ErrorReport\Detail\MessageBoxError.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

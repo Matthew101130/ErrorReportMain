@@ -80,7 +80,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)src;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -138,7 +138,7 @@
     <ClInclude Include="include\ErrorReport\Export.h" />
     <ClInclude Include="include\ErrorReport\MemoryError.h" />
     <ClInclude Include="pch.h" />
-    <ClInclude Include="src\Detail\MessageBoxError.h" />
+    <ClInclude Include="include\ErrorReport\Detail\MessageBoxError.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
