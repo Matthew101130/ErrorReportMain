@@ -28,11 +28,14 @@ namespace ErrorReportLauncher
         private readonly TextBox _customTitle = new TextBox();
         private readonly TextBox _customText = new TextBox();
         private readonly ComboBox _customIcon = new ComboBox();
+        private readonly ComboBox _messageBoxButtonsCombo = new ComboBox();
+        private readonly CheckBox _messageBoxHelp = new CheckBox();
         private readonly CheckBox _hideClose = new CheckBox();
         private readonly FlowLayoutPanel _buttonsPanel = new FlowLayoutPanel();
         private CheckBox[] _buttonChecks = Array.Empty<CheckBox>();
 
         private readonly TextBox _logFolder = new TextBox();
+        private readonly CheckBox _useRuntimeFolder = new CheckBox();
         private readonly Button _browseButton = new Button();
         private Bitmap _browseIcon = CreateFolderIcon(16);
         private readonly Button _generateButton = new Button();
@@ -64,6 +67,7 @@ namespace ErrorReportLauncher
             _functions.Add(new FunctionOption(ReportFunction.ExeError, "EXE_ERROR — 应用程序异常"));
             _functions.Add(new FunctionOption(ReportFunction.MemoryError, "MEMORY_ERROR — 内存错误"));
             _functions.Add(new FunctionOption(ReportFunction.Custom, "CUSTOM_ERROR — 自定义窗口"));
+            _functions.Add(new FunctionOption(ReportFunction.CustomMessageBox, "CUSTOM_MESSAGEBOX — 标准消息框"));
             foreach (FunctionOption option in _functions)
             {
                 _functionCombo.Items.Add(option);
@@ -110,6 +114,23 @@ namespace ErrorReportLauncher
             _customIcon.Items.AddRange(new object[] { "无", "错误", "警告", "信息", "问号" });
             _customIcon.SelectedIndex = 1;
 
+            _messageBoxButtonsCombo.DropDownStyle = ComboBoxStyle.DropDownList;
+            _messageBoxButtonsCombo.Items.AddRange(new object[]
+            {
+                "ok",
+                "okcancel",
+                "yesno",
+                "yesnocancel",
+                "retrycancel",
+                "abortretryignore",
+                "canceltrycontinue",
+            });
+            _messageBoxButtonsCombo.SelectedIndex = 0;
+
+            _messageBoxHelp.Text = "显示帮助按钮";
+            _messageBoxHelp.AutoSize = true;
+            _messageBoxHelp.Margin = new Padding(0, 8, 0, 4);
+
             _hideClose.Text = "隐藏右上角关闭按钮";
             _hideClose.AutoSize = true;
 
@@ -145,6 +166,8 @@ namespace ErrorReportLauncher
                 textBox.TextChanged += (_, _) => UpdatePreview();
             }
             _customIcon.SelectedIndexChanged += (_, _) => UpdatePreview();
+            _messageBoxButtonsCombo.SelectedIndexChanged += (_, _) => UpdatePreview();
+            _messageBoxHelp.CheckedChanged += (_, _) => UpdatePreview();
             _hideClose.CheckedChanged += (_, _) => UpdatePreview();
 
             _logFolder.Text = GetDefaultLogFolder();
@@ -161,6 +184,19 @@ namespace ErrorReportLauncher
             _browseButton.Click += (_, _) => BrowseLogFolder();
             var browseTip = new ToolTip();
             browseTip.SetToolTip(_browseButton, "选择日志文件夹");
+
+            _useRuntimeFolder.Text = "日志生成在运行文件夹";
+            _useRuntimeFolder.AutoSize = true;
+            _useRuntimeFolder.Checked = true;
+            _useRuntimeFolder.Margin = new Padding(0, 8, 0, 4);
+            _useRuntimeFolder.CheckAlign = ContentAlignment.MiddleLeft;
+            var runtimeTip = new ToolTip();
+            runtimeTip.SetToolTip(
+                _useRuntimeFolder,
+                "勾选后，生成的程序会把日志写在它自己所在的文件夹，此时日志文件夹输入框被禁用；\n"
+                + "取消勾选则日志固定写在上面指定的日志文件夹。");
+            _useRuntimeFolder.CheckedChanged += (_, _) => UpdateLogFolderEnabledState();
+            UpdateLogFolderEnabledState();
 
             _generateButton.Text = "生成 .exe";
             _generateButton.Width = 120;
@@ -214,7 +250,7 @@ namespace ErrorReportLauncher
             {
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                ColumnCount = 3,
+                ColumnCount = 4,
                 RowCount = 1,
                 Dock = DockStyle.Top,
                 Margin = new Padding(0, 8, 0, 0),
@@ -222,6 +258,7 @@ namespace ErrorReportLauncher
             logPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92F));
             logPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             logPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 44F));
+            logPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             logPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             logPanel.Controls.Add(new Label
             {
@@ -232,6 +269,7 @@ namespace ErrorReportLauncher
             }, 0, 0);
             logPanel.Controls.Add(_logFolder, 1, 0);
             logPanel.Controls.Add(_browseButton, 2, 0);
+            logPanel.Controls.Add(_useRuntimeFolder, 3, 0);
             _content.Controls.Add(logPanel, 0, 3);
 
             var bottomPanel = new FlowLayoutPanel
@@ -302,6 +340,14 @@ namespace ErrorReportLauncher
                     AddRow("图标", _customIcon);
                     AddRow("按钮", _buttonsPanel, 64);
                     AddRow("选项", _hideClose);
+                    break;
+
+                case ReportFunction.CustomMessageBox:
+                    AddRow("标题", _customTitle);
+                    AddRow("正文", _customText, 74);
+                    AddRow("图标", _customIcon);
+                    AddRow("按钮组合", _messageBoxButtonsCombo);
+                    AddRow("选项", _messageBoxHelp);
                     break;
             }
 
@@ -423,9 +469,59 @@ namespace ErrorReportLauncher
                     };
                 }
 
+                case ReportFunction.CustomMessageBox:
+                {
+                    string buttons = _messageBoxButtonsCombo.Text.Trim();
+                    if (_messageBoxHelp.Checked)
+                    {
+                        buttons += "|help";
+                    }
+                    return new PreviewData
+                    {
+                        Title = TextOr(_customTitle.Text, "错误"),
+                        Body = _customText.Text,
+                        Icon = GetSelectedIconKey(),
+                        Buttons = GetMessageBoxButtonLabels(buttons),
+                    };
+                }
+
                 default:
                     return new PreviewData();
             }
+        }
+
+        private static string[] GetMessageBoxButtonLabels(string spec)
+        {
+            bool hasHelp = false;
+            string? setLabel = null;
+            foreach (string token in spec.Split('|'))
+            {
+                string key = token.Trim();
+                if (key.Length == 0)
+                {
+                    continue;
+                }
+                if (string.Equals(key, "help", StringComparison.OrdinalIgnoreCase))
+                {
+                    hasHelp = true;
+                    continue;
+                }
+
+                setLabel = key.ToLowerInvariant() switch
+                {
+                    "ok" => "确定",
+                    "okcancel" => "确定|取消",
+                    "yesno" => "是|否",
+                    "yesnocancel" => "是|否|取消",
+                    "retrycancel" => "重试|取消",
+                    "abortretryignore" => "中止|重试|忽略",
+                    "canceltrycontinue" => "取消|重试|继续",
+                    _ => null,
+                };
+            }
+
+            string[] labels = (setLabel ?? "确定").Split('|');
+            return hasHelp ? labels.Append("帮助").ToArray() : labels;
         }
 
         private string GetSelectedIconKey()
@@ -445,6 +541,13 @@ namespace ErrorReportLauncher
             }
         }
 
+        private void UpdateLogFolderEnabledState()
+        {
+            bool runtimeFolder = _useRuntimeFolder.Checked;
+            _logFolder.Enabled = !runtimeFolder;
+            _browseButton.Enabled = !runtimeFolder;
+        }
+
         private void BrowseLogFolder()
         {
             using var dialog = new FolderBrowserDialog
@@ -462,45 +565,62 @@ namespace ErrorReportLauncher
         private void GenerateExecutable()
         {
             string logFolder = _logFolder.Text.Trim();
-            if (logFolder.Length == 0)
+            if (!_useRuntimeFolder.Checked)
             {
-                MessageBox.Show(this, "请填写日志文件夹。", "ErrorReportMain",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            try
-            {
-                logFolder = Path.GetFullPath(logFolder);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(this, "日志文件夹路径无效：\n" + ex.Message, "ErrorReportMain",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            if (!Directory.Exists(logFolder))
-            {
-                DialogResult create = MessageBox.Show(
-                    this,
-                    $"日志文件夹不存在：\n{logFolder}\n\n是否创建？",
-                    "ErrorReportMain",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Question);
-                if (create != DialogResult.Yes)
+                if (logFolder.Length == 0)
                 {
+                    MessageBox.Show(this, "请填写日志文件夹。", "ErrorReportMain",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
+
                 try
                 {
-                    Directory.CreateDirectory(logFolder);
+                    logFolder = Path.GetFullPath(logFolder);
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(this, "无法创建日志文件夹：\n" + ex.Message, "ErrorReportMain",
-                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(this, "日志文件夹路径无效：\n" + ex.Message, "ErrorReportMain",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
+                }
+
+                if (!Directory.Exists(logFolder))
+                {
+                    DialogResult create = MessageBox.Show(
+                        this,
+                        $"日志文件夹不存在：\n{logFolder}\n\n是否创建？",
+                        "ErrorReportMain",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question);
+                    if (create != DialogResult.Yes)
+                    {
+                        return;
+                    }
+                    try
+                    {
+                        Directory.CreateDirectory(logFolder);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(this, "无法创建日志文件夹：\n" + ex.Message, "ErrorReportMain",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                }
+            }
+            else
+            {
+                // 日志跟随生成程序的运行文件夹，这里只为“另存为”对话框准备一个初始目录。
+                try
+                {
+                    logFolder = logFolder.Length > 0
+                        ? Path.GetFullPath(logFolder)
+                        : GetDefaultLogFolder();
+                }
+                catch (Exception)
+                {
+                    logFolder = GetDefaultLogFolder();
                 }
             }
 
@@ -571,6 +691,7 @@ namespace ErrorReportLauncher
             {
                 Function = option.Kind,
                 LogFolder = logFolder,
+                UseRuntimeFolder = _useRuntimeFolder.Checked,
             };
 
             switch (option.Kind)
@@ -599,6 +720,16 @@ namespace ErrorReportLauncher
                         "|",
                         _buttonChecks.Where(checkBox => checkBox.Checked).Select(checkBox => checkBox.Text));
                     config.HideCloseButton = _hideClose.Checked ? 1 : 0;
+                    break;
+                case ReportFunction.CustomMessageBox:
+                    config.Title = _customTitle.Text;
+                    config.Text = _customText.Text;
+                    config.Icon = GetSelectedIconKey();
+                    config.Buttons = _messageBoxButtonsCombo.Text.Trim();
+                    if (_messageBoxHelp.Checked)
+                    {
+                        config.Buttons += "|help";
+                    }
                     break;
             }
 

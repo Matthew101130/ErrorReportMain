@@ -38,15 +38,17 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 
 ## 使用
 
-1. 第一行下拉框选择四个接口之一：
+1. 第一行下拉框选择五个接口之一：
    - `DLL_MISSING_ERROR`：只显示程序名、缺失模块。
    - `EXE_ERROR`：只显示程序名、异常名、错误代码、地址。
    - `MEMORY_ERROR`：只显示程序名、指令地址、被引用地址、访问类型。
    - `CUSTOM_ERROR`：标题、正文、图标下拉框、按钮勾选框、隐藏关闭按钮。
+   - `CUSTOM_MESSAGEBOX`：标题、正文、图标下拉框、标准按钮组合下拉框，可勾选“显示帮助按钮”。
 2. 中间是实时预览图，会跟随参数变化。
 3. 底部“日志文件夹”可以：
    - 直接输入路径；
-   - 或点击右侧文件夹图标，在弹出的浏览器中选择一个文件夹并确定。
+   - 或点击右侧文件夹图标，在弹出的浏览器中选择一个文件夹并确定；
+   - 勾选“日志生成在运行文件夹”后，输入框和浏览按钮会禁用，生成 exe 会把日志写在自身所在目录。
 4. 点击“生成 .exe”，选择保存位置。
 
 自定义模式的按钮勾选框目前固定提供：
@@ -55,7 +57,15 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 确定 / 取消 / 是 / 否 / 重试 / 忽略 / 中止 / 继续
 ```
 
-全部不勾选时，DLL 会使用默认的“确定”。
+`CUSTOM_MESSAGEBOX` 的标准按钮组合：
+
+```text
+ok / okcancel / yesno / yesnocancel / retrycancel / abortretryignore / canceltrycontinue
+```
+
+可勾选“显示帮助按钮”，生成 `ok|help` 这类组合。
+
+`CUSTOM_ERROR` 的按钮全部不勾选时，DLL 会使用默认的“确定”。
 
 ### 界面预览
 
@@ -79,7 +89,8 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 
 - 检测到末尾配置，就进入**播放模式**，不显示启动器界面；
 - 调用 DLL 弹出对应窗口；
-- 用户关闭窗口后，在配置的日志文件夹写入 `.log`。
+- 用户关闭窗口后，写入 `.log`：勾选“日志生成在运行文件夹”时写在 exe 旁边，
+  否则写到指定日志文件夹。
 
 实际效果（`DLL_MISSING_ERROR`，175% DPI，已带 comctl32 v6 清单）：
 
@@ -107,7 +118,10 @@ User Choice: 1
 
 - 前三个接口：`IDOK` = 1，`IDCANCEL` = 2；
 - `CUSTOM_ERROR`：0 基按钮索引，`-1` 关闭，`-2` 失败；
+- `CUSTOM_MESSAGEBOX`：标准 MessageBox 按钮 ID，例如 `IDYES` = 6、`IDNO` = 7、`IDCANCEL` = 2；
 - `MessageBoxW` 自身失败时可能是 0。
+
+配置格式为 `ERLPAY03`，兼容 `ERLPAY01` / `ERLPAY02`；旧版生成 exe 仍可运行。
 
 ## 生成物说明
 
@@ -128,17 +142,19 @@ User Choice: 1
 - 启动器和生成 exe 当前都是 x64；`ErrorReportMain-x86.dll` 只能给 32 位原生宿主使用。
 - 生成 exe 依赖 .NET Framework 4.8；不是完全原生的单文件 exe。
 - 图标只支持 `none` / `error` / `warning` / `info` / `question` 这些系统图标。
-- 自定义按钮最多 8 个，排成一行。
-- 日志文件夹是绝对路径，生成后换机器运行可能失效。
+- 自定义按钮最多 8 个，排成一行；`CUSTOM_MESSAGEBOX` 只能使用标准按钮组合和系统语言文本。
+- 勾选“日志生成在运行文件夹”时，如果 exe 放在 Program Files 等只读目录，日志会写入失败；
+  此时请取消勾选并指定可写目录。
+- 不勾选运行目录时，日志文件夹是绝对路径，生成后换机器运行可能失效。
 - 生成 exe 里仍包含启动器代码（用于预览和生成），但检测到末尾配置后只执行播放逻辑。
 
 ## 实现位置
 
 - `Program.cs`：检测末尾配置，决定进入启动器还是播放模式。
-- `PlayerConfig.cs`：配置结构、内嵌 DLL 数据和追加/读取逻辑。
-- `PlayerRunner.cs`：释放/加载内嵌 DLL、调用导出函数、写日志。
+- `PlayerConfig.cs`：配置结构（含运行目录日志开关、内嵌 DLL）和追加/读取逻辑。
+- `PlayerRunner.cs`：释放/加载内嵌 DLL、调用五个导出函数、解析日志目录、写日志。
 - `Generator.cs`：复制启动器、读取 DLL、追加配置。
 - `app.manifest`：comctl32 v6 视觉样式和 DPI awareness 清单。
 - `App.config`：WinForms 的 system DPI awareness 设置。
-- `MainForm.cs`：下拉框、参数控件、文件夹选择、生成。
+- `MainForm.cs`：下拉框、参数控件、运行目录日志复选框、文件夹选择、生成。
 - `PreviewPanel.cs`：GDI+ 绘制现代图标/按钮预览图。

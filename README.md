@@ -1,19 +1,19 @@
 # ErrorReportMain
 
 一个 Windows 动态链接库（DLL），用于在程序中复刻经典 Windows 系统错误弹窗，
-并提供一个可完全自定义标题、正文、图标、按钮和关闭按钮的错误窗口。
+并提供可完全自定义的错误窗口，以及使用标准 MessageBox 按钮的自定义消息框。
 库本身不处理真实崩溃；它只负责显示界面，后续处理由调用方决定。
 
 - 语言标准：C++20（`/std:c++20`），C 头文件兼容 C17
 - 目标平台：Win32 / x64，Unicode（解决方案平台写作 x86，工程平台写作 Win32）
-- 导出方式：`extern "C"` + `ErrorReportMain.def`，四个导出名在 x86/x64 下都无名称修饰
+- 导出方式：`extern "C"` + `ErrorReportMain.def`，五个导出名在 x86/x64 下都无名称修饰
 - 运行时依赖：仅 `KERNEL32.dll`、`USER32.dll`、`GDI32.dll`、`SHELL32.dll`（静态 CRT）
 
 ## 接口
 
 三个复刻接口均返回 `MessageBoxW` 的返回值，参数为空指针或空字符串时使用内置默认文本，不会崩溃。
-`CUSTOM_ERROR` 返回按钮索引或错误码，见下文。内存不足等极端情况下会退回固定文本提示，
-不会让 C++ 异常穿越 C 接口。
+`CUSTOM_ERROR` 返回按钮索引或错误码，`CUSTOM_MESSAGEBOX` 返回 `MessageBoxW` 的标准按钮 ID，见下文。
+内存不足等极端情况下会退回固定文本提示，不会让 C++ 异常穿越 C 接口。
 
 ```c
 int DLL_MISSING_ERROR(const wchar_t* ErrorProgram, const wchar_t* MissingDll);
@@ -24,6 +24,8 @@ int MEMORY_ERROR(const wchar_t* ErrorProgram, const wchar_t* Operate,
 int CUSTOM_ERROR(const wchar_t* Title, const wchar_t* Text,
                  const wchar_t* Icon, const wchar_t* Buttons,
                  int HideCloseButton);
+int CUSTOM_MESSAGEBOX(const wchar_t* Title, const wchar_t* Text,
+                      const wchar_t* Icon, const wchar_t* Buttons);
 ```
 
 | 接口 | 复刻的对话框 | 按钮 | 返回值 |
@@ -32,9 +34,11 @@ int CUSTOM_ERROR(const wchar_t* Title, const wchar_t* Text,
 | `EXE_ERROR` | “应用程序发生异常 xxx，位置为 xxx。” | 确定 / 取消 | `IDOK` / `IDCANCEL` |
 | `MEMORY_ERROR` | “xxx 指令引用的 xxx 内存。该内存不能为 xxx。” | 确定 / 取消 | `IDOK` / `IDCANCEL` |
 | `CUSTOM_ERROR` | 完全自定义窗口 | 由 `Buttons` 指定（最多 8 个） | 0 基按钮索引 / `-1` / `-2` |
+| `CUSTOM_MESSAGEBOX` | 自定义标题/正文/图标的标准消息框 | 标准 MessageBox 组合 | MessageBox 按钮 ID / `0` / `-2` |
 
 前三个接口的对话框标题统一为 `<程序名> - <分类>`，分类分别是“系统错误”“应用程序错误”；
-程序名为空时显示“未知程序”。`CUSTOM_ERROR` 使用调用方传入的 `Title`，不套用这个规则。
+程序名为空时显示“未知程序”。`CUSTOM_ERROR` 和 `CUSTOM_MESSAGEBOX` 使用调用方传入的 `Title`，
+不套用这个规则。
 
 ### 参数说明
 
@@ -88,13 +92,41 @@ if (choice == 1) {
 }
 ```
 
+### 标准消息框 CUSTOM_MESSAGEBOX
+
+使用标准 `MessageBoxW` 的按钮和系统图标，但标题、正文、图标和按钮组合由调用方指定。
+按钮文本跟随系统语言，不支持自定义按钮文字；需要自定义文字请用 `CUSTOM_ERROR`。
+
+| 参数 | 含义 | 为空或默认 |
+|---|---|---|
+| `Title` | 消息框标题 | `错误` |
+| `Text` | 正文，支持换行 | 空正文 |
+| `Icon` | `error` / `warning` / `info` / `question` / `none`，大小写不敏感 | 无图标 |
+| `Buttons` | `ok` / `okcancel` / `abortretryignore` / `yesnocancel` / `yesno` / `retrycancel` / `canceltrycontinue`，可追加 `"|help"` | `ok` |
+
+```cpp
+const int answer = CUSTOM_MESSAGEBOX(
+    L"保存更改",
+    L"文档已修改，是否保存？",
+    L"question",
+    L"yesnocancel");
+
+if (answer == IDNO) {
+    // 用户点了“否”
+}
+```
+
+返回标准 `MessageBoxW` 按钮 ID（`IDOK` / `IDCANCEL` / `IDYES` / `IDNO` /
+`IDABORT` / `IDRETRY` / `IDIGNORE` / `IDCONTINUE` / `IDTRYAGAIN` / `IDHELP`）；
+`0` 表示 `MessageBoxW` 失败，`-2` 表示按钮组合非法。
+
 ## 目录结构
 
 ```
 ErrorReportMain/
 ├─ ErrorReportMain.slnx            # 解决方案（VS 的 XML 解决方案格式）
 ├─ ErrorReportMain.vcxproj         # DLL 工程
-├─ ErrorReportMain.def             # 模块定义文件，固定四个无修饰导出名
+├─ ErrorReportMain.def             # 模块定义文件，固定五个无修饰导出名
 ├─ CppProperties.json              # VS“打开文件夹”模式的 IntelliSense 配置
 ├─ Launcher/                       # 官方启动器（C# WinForms，可选）
 ├─ .gitignore
@@ -103,12 +135,14 @@ ErrorReportMain/
 │  └─ ErrorReport/
 │     ├─ Export.h                  # 导出/导入/静态宏
 │     ├─ CustomError.h             # 完全自定义窗口
+│     ├─ CustomMessageBox.h        # 标准 MessageBox 按钮的自定义消息框
 │     ├─ DLLMissingError.h
 │     ├─ ExeError.h
 │     └─ MemoryError.h
 ├─ src/                            # 内部实现
 │  ├─ dllmain.cpp                  # DLL 入口点（空实现）
 │  ├─ CustomError.cpp              # 自定义窗口：布局、图标、按钮、隐藏关闭按钮
+│  ├─ CustomMessageBox.cpp         # 标准 MessageBox 按钮的自定义消息框
 │  ├─ DLLMissingError.cpp
 │  ├─ ExeError.cpp
 │  ├─ MemoryError.cpp
@@ -120,7 +154,7 @@ ErrorReportMain/
 ```
 
 公共接口只依赖 `include/`，内部实现全部放在 `src/`，调用方无需接触预编译头。
-`ErrorReportMain.def` 是导出名稳定的关键：它把四个 `extern "C"` 函数以无修饰名字导出，
+`ErrorReportMain.def` 是导出名稳定的关键：它把五个 `extern "C"` 函数以无修饰名字导出，
 避免 x86 下 `__cdecl` 的 `_DLL_MISSING_ERROR` 之类修饰名进入导出表。
 
 ## 构建
@@ -147,7 +181,7 @@ dumpbin /exports x64\Release\ErrorReportMain.dll
 dumpbin /exports Release\ErrorReportMain.dll
 ```
 
-两个产物都应列出 `DLL_MISSING_ERROR`、`EXE_ERROR`、`MEMORY_ERROR`、`CUSTOM_ERROR`。x86 的输出会写成
+两个产物都应列出 `DLL_MISSING_ERROR`、`EXE_ERROR`、`MEMORY_ERROR`、`CUSTOM_ERROR`、`CUSTOM_MESSAGEBOX`。x86 的输出会写成
 `DLL_MISSING_ERROR = _DLL_MISSING_ERROR`：等号左边是导出名（无修饰），右边是 DLL 内部的
 C 修饰符号；判断导出名时以等号左边为准。
 
@@ -226,6 +260,13 @@ internal static class ErrorReport
     internal static extern int CUSTOM_ERROR(string title, string text,
                                             string icon, string buttons,
                                             int hideCloseButton);
+
+    [DllImport("ErrorReportMain.dll",
+               CharSet = CharSet.Unicode,
+               ExactSpelling = true,
+               CallingConvention = CallingConvention.Cdecl)]
+    internal static extern int CUSTOM_MESSAGEBOX(string title, string text,
+                                                 string icon, string buttons);
 }
 ```
 
@@ -236,6 +277,16 @@ int choice = ErrorReport.CUSTOM_ERROR(
 if (choice == 1)
 {
     // 用户点了“取消”
+}
+```
+
+```csharp
+int answer = ErrorReport.CUSTOM_MESSAGEBOX(
+    "保存更改", "文档已修改，是否保存？", "question", "yesnocancel");
+
+if (answer == 7)
+{
+    // IDNO：用户点了“否”
 }
 ```
 
@@ -253,11 +304,17 @@ lib.CUSTOM_ERROR.restype = ctypes.c_int
 
 choice = lib.CUSTOM_ERROR("自定义错误", "正文", "error", "确定|取消", 0)
 # choice: 0 = 确定, 1 = 取消, -1 = 关闭, -2 = 失败
+
+lib.CUSTOM_MESSAGEBOX.argtypes = [ctypes.c_wchar_p] * 4
+lib.CUSTOM_MESSAGEBOX.restype = ctypes.c_int
+
+answer = lib.CUSTOM_MESSAGEBOX("保存更改", "文档已修改，是否保存？", "question", "yesnocancel")
+# answer: 6 = 是, 7 = 否, 2 = 取消, 0 = 失败, -2 = 参数错误
 ```
 
 ### 视觉样式（为什么有时显示经典按钮）
 
-`MessageBoxW` 和 `CUSTOM_ERROR` 里的标准控件都使用**宿主进程**的视觉样式：
+`MessageBoxW`、`CUSTOM_ERROR` 和 `CUSTOM_MESSAGEBOX` 里的标准控件都使用**宿主进程**的视觉样式：
 
 - 带 `Microsoft.Windows.Common-Controls` 6.0 manifest 的宿主会显示 Windows 10/11 的现代图标和扁平按钮；
 - 不带这个 manifest 的原生宿主会退回到经典样式，看起来像 Windows 2000。
@@ -286,11 +343,12 @@ system DPI awareness，启动器再用 [Launcher/App.config](Launcher/App.config
 `Launcher/` 提供一个可选的 C# WinForms 启动器，不想自己写调用程序时可以用它生成
 “点开就弹错误框”的 exe。它支持：
 
-- 下拉选择四个接口；
+- 下拉选择五个接口；
 - 前三个接口只显示各自的参数，`CUSTOM_ERROR` 提供标题、正文、图标下拉框、
-  按钮勾选框和隐藏关闭按钮；
+  按钮勾选框和隐藏关闭按钮，`CUSTOM_MESSAGEBOX` 提供标题、正文、图标下拉框和按钮组合下拉框；
 - 实时预览图；
 - 日志文件夹可直接输入，也可点右侧文件夹图标浏览选择；
+- 可勾选“日志生成在运行文件夹”，让生成 exe 把日志写在自身所在目录，忽略上面的日志文件夹；
 - 点击“生成 .exe”输出单文件播放器，x64 DLL 会一起写入 exe 末尾；生成物可以单独移动，不再需要旁边的 `ErrorReportMain.dll`。
 
 ![启动器界面](Launcher/launcher-preset.png)
@@ -325,6 +383,7 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 - 导出名由 `ErrorReportMain.def` 固定；构建 DLL 时 `ERRORREPORT_API` 为空，链接 DLL 时为 `__declspec(dllimport)`，静态编译时为空。仓库工程只生成 DLL，如需把实现直接编入调用方，可手动编译 `src/` 中的实现文件（通常排除 `src/dllmain.cpp`）并定义 `ERRORREPORTMAIN_STATIC`（不需要 `.def`）。迁移到其他构建系统时，记得保留 `.def` 或改用 `__declspec(dllexport)`。
 - 消息框优先挂到调用线程的活动窗口；没有活动窗口时，只接受同进程的前台窗口，避免对话框被其他窗口遮挡或错误绑定到其他进程。
 - `CUSTOM_ERROR` 使用内存中的对话框模板加标准 `STATIC` / `BUTTON` / `EDIT` 控件，背景使用 `COLOR_WINDOW`，图标来自 shell 的现代库存图标；控件外观跟随宿主视觉样式。
+- `CUSTOM_MESSAGEBOX` 复用 `MessageBoxW` 的 owner 选择和标题拼接逻辑，按钮组合/图标映射为标准 MessageBox 标志；不支持自定义按钮文字或隐藏关闭按钮。
 - `CUSTOM_ERROR` 在创建时按 owner 所在显示器的 DPI 计算尺寸并居中；正文太长时切换为带垂直滚动条的只读 `EDIT`，避免长文本把窗口撑得过高。
 - `HideCloseButton` 通过移除 `WS_SYSMENU` 和系统菜单里的 `SC_CLOSE` 实现，同时在消息处理中忽略 X、Alt+F4 和 Esc。
 - 导出函数捕获所有 C++ 异常；内存不足等情况下退回固定文本，不让异常穿越 C 接口。
@@ -340,5 +399,8 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 - `CUSTOM_ERROR` 的图标只支持 `error` / `warning` / `info` / `question` / `none` 这几个系统图标，不支持从 `.ico` 文件加载自定义图标。
 - `CUSTOM_ERROR` 的按钮文本把 `&` 当作 Win32 加速键前缀；要显示字面量 `&` 请写成 `&&`。
 - `CUSTOM_ERROR` 在窗口打开期间不会跟随显示器 DPI 变化重新布局；初始 DPI 和居中位置是正确的。
+- `CUSTOM_MESSAGEBOX` 只能使用标准 MessageBox 按钮组合，按钮文本跟随系统语言，不支持自定义按钮文字或隐藏关闭按钮。
+- `CUSTOM_MESSAGEBOX` 的 `"|help"` 只会显示“帮助”按钮，不提供帮助内容的处理回调。
+- 启动器勾选“日志生成在运行文件夹”时，如果 exe 位于 Program Files 等只读目录，日志会写入失败；请改用可写目录。
 - 提示文本目前是简体中文硬编码，没有资源 DLL 或多语言切换。
 - 仓库没有自动化测试；可以使用 `Launcher/` 启动器手工生成并验证弹窗和日志。

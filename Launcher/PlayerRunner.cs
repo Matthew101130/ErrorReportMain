@@ -44,6 +44,13 @@ namespace ErrorReportLauncher
             [MarshalAs(UnmanagedType.LPWStr)] string buttons,
             int hideCloseButton);
 
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
+        private delegate int CustomMessageBoxFn(
+            [MarshalAs(UnmanagedType.LPWStr)] string title,
+            [MarshalAs(UnmanagedType.LPWStr)] string text,
+            [MarshalAs(UnmanagedType.LPWStr)] string icon,
+            [MarshalAs(UnmanagedType.LPWStr)] string buttons);
+
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         private static extern IntPtr LoadLibraryW(string fileName);
 
@@ -52,7 +59,7 @@ namespace ErrorReportLauncher
 
         public static void Run(PlayerConfig config)
         {
-            string logFolder = config.LogFolder ?? string.Empty;
+            string logFolder = ResolveLogFolder(config);
             string? error = null;
             int result = -2;
 
@@ -66,21 +73,18 @@ namespace ErrorReportLauncher
                 Directory.CreateDirectory(logFolder);
                 EnsureModule(config);
 
-                var dllMissing = GetFunction<DllMissingErrorFn>("DLL_MISSING_ERROR");
-                var exeError = GetFunction<ExeErrorFn>("EXE_ERROR");
-                var memoryError = GetFunction<MemoryErrorFn>("MEMORY_ERROR");
-                var customError = GetFunction<CustomErrorFn>("CUSTOM_ERROR");
-
                 result = config.Function switch
                 {
-                    ReportFunction.DllMissing => dllMissing(
+                    ReportFunction.DllMissing => GetFunction<DllMissingErrorFn>("DLL_MISSING_ERROR")(
                         config.ErrorProgram, config.MissingDll),
-                    ReportFunction.ExeError => exeError(
+                    ReportFunction.ExeError => GetFunction<ExeErrorFn>("EXE_ERROR")(
                         config.ErrorProgram, config.ErrorName, config.ErrorCode, config.Address),
-                    ReportFunction.MemoryError => memoryError(
+                    ReportFunction.MemoryError => GetFunction<MemoryErrorFn>("MEMORY_ERROR")(
                         config.ErrorProgram, config.Operate, config.MemoryAddress, config.CannotBe),
-                    ReportFunction.Custom => customError(
+                    ReportFunction.Custom => GetFunction<CustomErrorFn>("CUSTOM_ERROR")(
                         config.Title, config.Text, config.Icon, config.Buttons, config.HideCloseButton),
+                    ReportFunction.CustomMessageBox => GetFunction<CustomMessageBoxFn>("CUSTOM_MESSAGEBOX")(
+                        config.Title, config.Text, config.Icon, config.Buttons),
                     _ => -2,
                 };
             }
@@ -115,6 +119,17 @@ namespace ErrorReportLauncher
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
             }
+        }
+
+        private static string ResolveLogFolder(PlayerConfig config)
+        {
+            if (config.UseRuntimeFolder)
+            {
+                // 日志跟随播放器自身所在的文件夹。
+                return AppContext.BaseDirectory;
+            }
+
+            return config.LogFolder ?? string.Empty;
         }
 
         private static void EnsureModule(PlayerConfig config)
@@ -256,6 +271,12 @@ namespace ErrorReportLauncher
                     builder.AppendLine($"Buttons: {config.Buttons}");
                     builder.AppendLine($"HideCloseButton: {config.HideCloseButton}");
                     break;
+                case ReportFunction.CustomMessageBox:
+                    builder.AppendLine($"Title: {config.Title}");
+                    builder.AppendLine($"Text: {config.Text}");
+                    builder.AppendLine($"Icon: {config.Icon}");
+                    builder.AppendLine($"Buttons: {config.Buttons}");
+                    break;
             }
 
             builder.AppendLine($"User Choice: {result}");
@@ -275,6 +296,7 @@ namespace ErrorReportLauncher
                 ReportFunction.ExeError => "EXE_ERROR",
                 ReportFunction.MemoryError => "MEMORY_ERROR",
                 ReportFunction.Custom => "CUSTOM_ERROR",
+                ReportFunction.CustomMessageBox => "CUSTOM_MESSAGEBOX",
                 _ => function.ToString(),
             };
         }

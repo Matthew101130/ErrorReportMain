@@ -6,3 +6,4 @@
 #include "ErrorReport/ExeError.h"
 #include "ErrorReport/MemoryError.h"
 #include "ErrorReport/CustomError.h"
+#include "ErrorReport/CustomMessageBox.h"

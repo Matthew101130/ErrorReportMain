@@ -29,6 +29,9 @@
     <ClInclude Include="include\ErrorReport\CustomError.h">
       <Filter>头文件\公共接口</Filter>
     </ClInclude>
+    <ClInclude Include="include\ErrorReport\CustomMessageBox.h">
+      <Filter>头文件\公共接口</Filter>
+    </ClInclude>
     <ClInclude Include="include\ErrorReport\DLLMissingError.h">
       <Filter>头文件\公共接口</Filter>
     </ClInclude>
@@ -50,6 +53,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="src\CustomError.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\CustomMessageBox.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="src\dllmain.cpp">

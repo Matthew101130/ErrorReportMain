@@ -1,7 +1,7 @@
 ; ErrorReportMain 的模块定义文件。
 ;
 ; 使用 .def 明确固定导出名，避免 x86 下 __cdecl 的 C 修饰名（前导下划线）
-; 直接进入导出表。这里列出的四个名字在 x86 和 x64 下完全一致，可供
+; 直接进入导出表。这里列出的五个名字在 x86 和 x64 下完全一致，可供
 ; GetProcAddress / P/Invoke 直接使用。
 ; 如果修改工程的 TargetName，请同步修改下面的 LIBRARY 名称。
 LIBRARY ErrorReportMain
@@ -11,3 +11,4 @@ EXPORTS
     EXE_ERROR
     MEMORY_ERROR
     CUSTOM_ERROR
+    CUSTOM_MESSAGEBOX
