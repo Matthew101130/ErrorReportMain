@@ -117,13 +117,13 @@ namespace ErrorReportLauncher
             _messageBoxButtonsCombo.DropDownStyle = ComboBoxStyle.DropDownList;
             _messageBoxButtonsCombo.Items.AddRange(new object[]
             {
-                "ok",
-                "okcancel",
-                "yesno",
-                "yesnocancel",
-                "retrycancel",
-                "abortretryignore",
-                "canceltrycontinue",
+                "确定",
+                "确定|取消",
+                "是|否",
+                "是|否|取消",
+                "重试|取消",
+                "中止|重试|忽略",
+                "取消|重试|继续",
             });
             _messageBoxButtonsCombo.SelectedIndex = 0;
 
@@ -471,7 +471,7 @@ namespace ErrorReportLauncher
 
                 case ReportFunction.CustomMessageBox:
                 {
-                    string buttons = _messageBoxButtonsCombo.Text.Trim();
+                    string buttons = GetMessageBoxButtonsSpec();
                     if (_messageBoxHelp.Checked)
                     {
                         buttons += "|help";
@@ -488,6 +488,21 @@ namespace ErrorReportLauncher
                 default:
                     return new PreviewData();
             }
+        }
+
+        private string GetMessageBoxButtonsSpec()
+        {
+            // 下拉框显示中文标签，写入配置/DLL 时转回标准按钮键。
+            return _messageBoxButtonsCombo.Text.Trim() switch
+            {
+                "确定|取消" => "okcancel",
+                "是|否" => "yesno",
+                "是|否|取消" => "yesnocancel",
+                "重试|取消" => "retrycancel",
+                "中止|重试|忽略" => "abortretryignore",
+                "取消|重试|继续" => "canceltrycontinue",
+                _ => "ok",
+            };
         }
 
         private static string[] GetMessageBoxButtonLabels(string spec)
@@ -725,7 +740,7 @@ namespace ErrorReportLauncher
                     config.Title = _customTitle.Text;
                     config.Text = _customText.Text;
                     config.Icon = GetSelectedIconKey();
-                    config.Buttons = _messageBoxButtonsCombo.Text.Trim();
+                    config.Buttons = GetMessageBoxButtonsSpec();
                     if (_messageBoxHelp.Checked)
                     {
                         config.Buttons += "|help";

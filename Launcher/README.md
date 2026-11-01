@@ -61,10 +61,11 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 `CUSTOM_MESSAGEBOX` 的标准按钮组合：
 
 ```text
-ok / okcancel / yesno / yesnocancel / retrycancel / abortretryignore / canceltrycontinue
+确定 / 确定|取消 / 是|否 / 是|否|取消 / 重试|取消 / 中止|重试|忽略 / 取消|重试|继续
 ```
 
-可勾选“显示帮助按钮”，生成 `ok|help` 这类组合。
+可勾选“显示帮助按钮”，在下拉框选项后追加 `|help`；生成 exe 时会自动转回
+`ok` / `okcancel` 等标准按钮键传给 DLL。
 
 `CUSTOM_ERROR` 的按钮全部不勾选时，DLL 会使用默认的“确定”。
 
