@@ -29,6 +29,10 @@ extern "C" {
 //     若没有任何按钮（实际不会发生，至少会有一个“确定”），则返回 -1。
 //   - 该函数是阻塞的，直到用户点击按钮或关闭窗口才返回。
 //   - 图标只使用系统图标，不支持从 .ico 文件加载。
+//   - 窗口弹出时会按 Icon 播放与 MessageBox 相同的系统提示音：
+//     error -> 关键停止音，warning -> 感叹音，info -> 星号音，
+//     question -> 问题音，无图标 -> Windows 默认蜂鸣。
+//     具体音色由系统声音方案决定，系统静音时不会发声。
 ERRORREPORT_API int CUSTOM_ERROR(const wchar_t* Title,
                                  const wchar_t* Text,
                                  const wchar_t* Icon,

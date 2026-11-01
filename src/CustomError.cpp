@@ -113,6 +113,31 @@ LPCWSTR IconResource(IconKind kind) noexcept {
     }
 }
 
+// MessageBox 在弹出时会按图标播放对应的系统提示音（内部等价于
+// MessageBeep(uType & MB_ICONMASK)）。CUSTOM_ERROR 自己绘制窗口，不会经过
+// MessageBox，这里补上同样的映射，让两者的声音表现一致。
+UINT MessageBeepType(IconKind kind) noexcept {
+    switch (kind) {
+    case IconKind::Error:
+        return MB_ICONERROR;
+    case IconKind::Warning:
+        return MB_ICONWARNING;
+    case IconKind::Information:
+        return MB_ICONINFORMATION;
+    case IconKind::Question:
+        return MB_ICONQUESTION;
+    case IconKind::None:
+    default:
+        // 无图标时 MessageBox 取 MB_ICONMASK 为 0，即 MB_OK（Windows 默认蜂鸣）。
+        return MB_OK;
+    }
+}
+
+// 播放失败时 MessageBeep 会退化成系统默认音或扬声器蜂鸣，这里不需要额外处理。
+void PlayAlertSound(IconKind kind) noexcept {
+    ::MessageBeep(MessageBeepType(kind));
+}
+
 HICON LoadModernOrSystemIcon(IconKind kind, int width, int height, bool& owned) noexcept {
     owned = false;
 
@@ -510,6 +535,7 @@ INT_PTR CALLBACK CustomErrorDialogProc(HWND hDlg, UINT message, WPARAM wParam, L
         if (!InitializeDialog(hDlg, state)) {
             return TRUE;
         }
+        PlayAlertSound(state->iconKind);
         return TRUE;
     }
     case WM_COMMAND: {
