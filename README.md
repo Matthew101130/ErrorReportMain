@@ -79,6 +79,23 @@ int CUSTOM_MESSAGEBOX(const wchar_t* Title, const wchar_t* Text,
 - 图标只使用系统图标；不支持从 `.ico` 文件加载。
 - 按钮文本中的 `&` 按 Win32 习惯作为加速键前缀，要显示字面量 `&` 请写成 `&&`。
 
+#### 提示音
+
+`CUSTOM_ERROR` 在弹出的同时会播放与 `MessageBox` 相同的系统提示音，按 `Icon` 映射：
+
+| `Icon` | 播放的系统声音 | 等价的 `MessageBeep` 参数 |
+|---|---|---|
+| `error` | Windows 关键停止音 | `MB_ICONERROR` |
+| `warning` | Windows 感叹音 | `MB_ICONWARNING` |
+| `info` / `information` | Windows 星号音 | `MB_ICONINFORMATION` |
+| `question` | Windows 问题音 | `MB_ICONQUESTION` |
+| `none` 或省略 | Windows 默认蜂鸣 | `MB_OK` |
+
+这与 `MessageBox`（包括本库的 `CUSTOM_MESSAGEBOX` 和三个复刻接口）内部的行为一致：
+它按 `uType & MB_ICONMASK` 取声音，`Icon` 为空时落到 `MB_OK`，即默认蜂鸣。
+具体音色由控制面板的声音方案决定，用户关闭了系统提示音时不会发声；`MessageBeep`
+无法播放指定声音时会退回系统默认音，再退回扬声器蜂鸣。
+
 ```cpp
 const int choice = CUSTOM_ERROR(
     L"自定义错误",
@@ -387,6 +404,7 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 - 消息框优先挂到调用线程的活动窗口；没有活动窗口时，只接受同进程的前台窗口，避免对话框被其他窗口遮挡或错误绑定到其他进程。
 - `CUSTOM_ERROR` 使用内存中的对话框模板加标准 `STATIC` / `BUTTON` / `EDIT` 控件，背景使用 `COLOR_WINDOW`，图标来自 shell 的现代库存图标；控件外观跟随宿主视觉样式。
 - `CUSTOM_MESSAGEBOX` 复用 `MessageBoxW` 的 owner 选择和标题拼接逻辑，按钮组合/图标映射为标准 MessageBox 标志；不支持自定义按钮文字或隐藏关闭按钮。
+- `CUSTOM_ERROR` 在 `WM_INITDIALOG` 里调用 `MessageBeep`，按图标播放与 `MessageBox` 一致的系统提示音（见“提示音”）；声音异步播放，不阻塞窗口显示。
 - `CUSTOM_ERROR` 在创建时按 owner 所在显示器的 DPI 计算尺寸并居中；正文太长时切换为带垂直滚动条的只读 `EDIT`，避免长文本把窗口撑得过高。
 - `HideCloseButton` 通过移除 `WS_SYSMENU` 和系统菜单里的 `SC_CLOSE` 实现，同时在消息处理中忽略 X、Alt+F4 和 Esc。
 - 导出函数捕获所有 C++ 异常；内存不足等情况下退回固定文本，不让异常穿越 C 接口。
@@ -401,6 +419,7 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 - `CUSTOM_ERROR` 最多支持 8 个按钮，且只排成一行；按钮文本过长会把窗口撑宽。
 - `CUSTOM_ERROR` 的图标只支持 `error` / `warning` / `info` / `question` / `none` 这几个系统图标，不支持从 `.ico` 文件加载自定义图标。
 - `CUSTOM_ERROR` 的按钮文本把 `&` 当作 Win32 加速键前缀；要显示字面量 `&` 请写成 `&&`。
+- `CUSTOM_ERROR` 的提示音取自系统声音方案，无法单独关闭，也不能指定自定义音效。
 - `CUSTOM_ERROR` 在窗口打开期间不会跟随显示器 DPI 变化重新布局；初始 DPI 和居中位置是正确的。
 - `CUSTOM_MESSAGEBOX` 只能使用标准 MessageBox 按钮组合，按钮文本跟随系统语言，不支持自定义按钮文字或隐藏关闭按钮。
 - `CUSTOM_MESSAGEBOX` 的 `"|help"` 只会显示“帮助”按钮，不提供帮助内容的处理回调。
