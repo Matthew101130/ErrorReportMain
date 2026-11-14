@@ -363,15 +363,18 @@ system DPI awareness；启动器用 [Launcher/DpiHelper.cs](Launcher/DpiHelper.c
 `Launcher/` 提供一个可选的 C# WinForms 启动器，不想自己写调用程序时可以用它生成
 “点开就弹错误框”的 exe。它支持：
 
-- 下拉选择五个接口；
-- 前三个接口只显示各自的参数，`CUSTOM_ERROR` 提供标题、正文、图标下拉框、
-  按钮勾选框和隐藏关闭按钮，`CUSTOM_MESSAGEBOX` 提供标题、正文、图标下拉框和按钮组合下拉框；
-- 实时预览图；
+- 以“弹窗组”为单位组织多个弹窗，每一行是一个弹窗，带序号、摘要、弹出次数和无限循环；
+- “添加弹窗”打开原来的弹窗编辑界面：五个接口、各自参数、实时预览、确定/取消；
+- 每行右侧有编辑和删除按钮；行可以拖动调整顺序；
+- 弹出次数支持正整数；勾选“无限循环”后次数显示为 `∞` 并变灰，取消后恢复为 `1`；
+- 如果无限循环弹窗不是最后一个，生成时会报错，因为后面的弹窗永远不会执行；
 - 日志文件夹可直接输入，也可点右侧文件夹图标浏览选择；
 - 可勾选“日志生成在运行文件夹”，让生成 exe 把日志写在自身所在目录，忽略上面的日志文件夹；
 - 点击“生成 .exe”输出单文件播放器，x64 DLL 会一起写入 exe 末尾；生成物可以单独移动，不再需要旁边的 `ErrorReportMain.dll`。
 
-![启动器界面](Launcher/launcher-preset.png)
+![弹窗组启动器](Launcher/launcher-group-rows-v9.png)
+
+![弹窗编辑界面](Launcher/launcher-custom.png)
 
 构建（先构建 x64 DLL）：
 
@@ -392,6 +395,20 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 启动器通过 `DpiHelper` 读取实际 DPI 并手动缩放，不再需要 `ErrorReportLauncher.exe.config`，
 175% 缩放下会按物理像素渲染，不需要在兼容性里手动设置“替代高 DPI 缩放行为”。详细说明见
 [Launcher/README.md](Launcher/README.md)。
+
+### Windows 7 说明
+
+- Windows 7 没有官方“SP2”，最后版本是 **SP1**。这里按 Windows 7 SP1 x64 处理。
+- 系统必须已安装 **.NET Framework 4.8**；干净安装的 Win7 默认没有，不能保证“双击就开”。
+- 当前启动器和生成 exe 仅提供 **x64**；32 位 Win7 不能运行。
+- DLL 已把 `_WIN32_WINNT` 设为 `0x0601`，并确认没有静态导入
+  `GetDpiForWindow` / `AdjustWindowRectExForDpi` 等 Win10+ DPI API；这些调用在运行时动态加载，
+  缺失时回退到 GDI。
+- 启动器在 Win7/8/8.1 上把次数/日志路径输入框退回系统原生 `EDIT` 控件，按钮和复选框由
+  comctl32 v6 使用系统视觉样式。
+- **不能承诺“所有元素自动变成 Win7 原生样子”**：弹窗组行、表头、拖拽柄、预览面板是应用自绘的，
+  不会随系统自动变成 Win7 原生控件；要逐像素原生 Win7 外观必须整体改用系统控件。
+- 以上是静态兼容性检查，**没有在真实 Windows 7 机器上跑过**，因此不能给出 100% 保证。
 
 ## 设计说明
 
@@ -423,6 +440,8 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 - `CUSTOM_ERROR` 在窗口打开期间不会跟随显示器 DPI 变化重新布局；初始 DPI 和居中位置是正确的。
 - `CUSTOM_MESSAGEBOX` 只能使用标准 MessageBox 按钮组合，按钮文本跟随系统语言，不支持自定义按钮文字或隐藏关闭按钮。
 - `CUSTOM_MESSAGEBOX` 的 `"|help"` 只会显示“帮助”按钮，不提供帮助内容的处理回调。
+- 启动器弹窗组最多 1000 个弹窗；无限循环弹窗必须是最后一个，否则生成时会报错。
+- 无限循环会持续写日志，文件会不断增长；需要停止时只能结束播放器进程。
 - 启动器勾选“日志生成在运行文件夹”时，如果 exe 位于 Program Files 等只读目录，日志会写入失败；请改用可写目录。
 - 提示文本目前是简体中文硬编码，没有资源 DLL 或多语言切换。
 - 仓库没有自动化测试；可以使用 `Launcher/` 启动器手工生成并验证弹窗和日志。

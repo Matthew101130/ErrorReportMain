@@ -13,6 +13,17 @@ namespace ErrorReportLauncher
         [DllImport("user32.dll")]
         private static extern uint GetDpiForWindow(IntPtr hwnd);
 
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetDC(IntPtr hwnd);
+
+        [DllImport("user32.dll")]
+        private static extern int ReleaseDC(IntPtr hwnd, IntPtr dc);
+
+        [DllImport("gdi32.dll")]
+        private static extern int GetDeviceCaps(IntPtr dc, int index);
+
+        private const int LogPixelsX = 88;
+
         public static float GetScale(IntPtr hwnd)
         {
             uint dpi = 0;
@@ -24,7 +35,25 @@ namespace ErrorReportLauncher
                 }
                 catch (EntryPointNotFoundException)
                 {
-                    // Windows 7 没有 GetDpiForWindow，下面用 GDI+ 回退。
+                    // Windows 7 没有 GetDpiForWindow，下面用 GDI 回退。
+                }
+                catch (DllNotFoundException)
+                {
+                    // 理论上 user32 总是存在；保留回退路径。
+                }
+            }
+
+            if (dpi == 0 && hwnd != IntPtr.Zero)
+            {
+                IntPtr dc = GetDC(hwnd);
+                if (dc != IntPtr.Zero)
+                {
+                    int gdiDpi = GetDeviceCaps(dc, LogPixelsX);
+                    ReleaseDC(hwnd, dc);
+                    if (gdiDpi > 0)
+                    {
+                        dpi = (uint)gdiDpi;
+                    }
                 }
             }
 

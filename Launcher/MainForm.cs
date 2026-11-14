@@ -9,168 +9,70 @@ namespace ErrorReportLauncher
 {
     public sealed class MainForm : Form
     {
-        private readonly ComboBox _functionCombo = new ComboBox();
-        private readonly PreviewPanel _preview = new PreviewPanel();
-        private readonly TableLayoutPanel _paramsTable = new TableLayoutPanel();
-        private readonly TableLayoutPanel _content = new TableLayoutPanel();
-        private readonly List<FunctionOption> _functions = new List<FunctionOption>();
-        private readonly List<Label> _generatedLabels = new List<Label>();
-
-        private readonly TextBox _errorProgram = new TextBox();
-        private readonly TextBox _missingDll = new TextBox();
-        private readonly TextBox _errorName = new TextBox();
-        private readonly TextBox _errorCode = new TextBox();
-        private readonly TextBox _address = new TextBox();
-        private readonly TextBox _operate = new TextBox();
-        private readonly TextBox _memoryAddress = new TextBox();
-        private readonly TextBox _cannotBe = new TextBox();
-
-        private readonly TextBox _customTitle = new TextBox();
-        private readonly TextBox _customText = new TextBox();
-        private readonly ComboBox _customIcon = new ComboBox();
-        private readonly ComboBox _messageBoxButtonsCombo = new ComboBox();
-        private readonly CheckBox _messageBoxHelp = new CheckBox();
-        private readonly CheckBox _hideClose = new CheckBox();
-        private readonly FlowLayoutPanel _buttonsPanel = new FlowLayoutPanel();
-        private CheckBox[] _buttonChecks = Array.Empty<CheckBox>();
-
-        private readonly TextBox _logFolder = new TextBox();
+        private readonly List<PopupDefinition> _popups = new List<PopupDefinition>();
+        private readonly List<PopupRowControl> _rows = new List<PopupRowControl>();
+        private readonly Panel _rowsPanel = new Panel();
+        private readonly TableLayoutPanel _header = new TableLayoutPanel();
+        private readonly Button _addButton = new Button();
+        private readonly Button _generateButton = new Button();
+        private readonly RoundedTextBox _logFolder = new RoundedTextBox();
         private readonly CheckBox _useRuntimeFolder = new CheckBox();
         private readonly Button _browseButton = new Button();
         private Bitmap _browseIcon = CreateFolderIcon(16);
-        private readonly Button _generateButton = new Button();
         private readonly Label _statusLabel = new Label();
 
-        private bool _suspendPreview;
+        private float _scale = 1F;
+        private int _rowHeight = 44;
+        private bool _repositioning;
 
         public MainForm()
         {
             Text = "ErrorReportMain 官方启动器";
             Font = new Font("Microsoft YaHei UI", 9F);
             StartPosition = FormStartPosition.CenterScreen;
-            ClientSize = new Size(700, 650);
-            MinimumSize = new Size(720, 620);
-            AutoScroll = true;
+            ClientSize = new Size(820, 650);
+            MinimumSize = new Size(840, 600);
             BackColor = Color.FromArgb(248, 248, 248);
             DoubleBuffered = true;
             AutoScaleMode = AutoScaleMode.None;
 
             CreateControls();
             BuildLayout();
+            _popups.Add(new PopupDefinition
+            {
+                Function = ReportFunction.DllMissing,
+                ErrorProgram = "Demo.exe",
+                MissingDll = "MSVCP140.dll",
+                RepeatCount = 1,
+            });
+            RefreshList();
+        }
 
-            _functionCombo.SelectedIndex = 0;
+        private int S(float value)
+        {
+            return Math.Max(1, (int)Math.Round(value * _scale));
         }
 
         private void CreateControls()
         {
-            _functions.Add(new FunctionOption(ReportFunction.DllMissing, "DLL_MISSING_ERROR — 缺少 DLL"));
-            _functions.Add(new FunctionOption(ReportFunction.ExeError, "EXE_ERROR — 应用程序异常"));
-            _functions.Add(new FunctionOption(ReportFunction.MemoryError, "MEMORY_ERROR — 内存错误"));
-            _functions.Add(new FunctionOption(ReportFunction.Custom, "CUSTOM_ERROR — 自定义窗口"));
-            _functions.Add(new FunctionOption(ReportFunction.CustomMessageBox, "CUSTOM_MESSAGEBOX — 标准消息框"));
-            foreach (FunctionOption option in _functions)
-            {
-                _functionCombo.Items.Add(option);
-            }
-            _functionCombo.DropDownStyle = ComboBoxStyle.DropDownList;
-            _functionCombo.Width = 360;
-            _functionCombo.SelectedIndexChanged += (_, _) =>
-            {
-                BuildParameterRows();
-                UpdatePreview();
-            };
+            _addButton.Text = "＋ 添加弹窗";
+            _addButton.Width = 120;
+            _addButton.Height = 32;
+            _addButton.Margin = new Padding(0);
+            _addButton.Click += (_, _) => AddPopup();
 
-            _preview.Width = 660;
-            _preview.Height = 190;
-            _preview.BorderStyle = BorderStyle.FixedSingle;
-            _preview.Margin = new Padding(0, 8, 0, 8);
+            _rowsPanel.AutoScroll = true;
+            _rowsPanel.Dock = DockStyle.Fill;
+            _rowsPanel.BackColor = Color.White;
+            _rowsPanel.BorderStyle = BorderStyle.FixedSingle;
+            _rowsPanel.AllowDrop = true;
+            _rowsPanel.Margin = new Padding(0);
+            _rowsPanel.Resize += (_, _) => RepositionRows();
+            _rowsPanel.DragOver += RowsPanelDragOver;
+            _rowsPanel.DragDrop += RowsPanelDragDrop;
 
-            _paramsTable.AutoSize = true;
-            _paramsTable.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-            _paramsTable.ColumnCount = 2;
-            _paramsTable.Dock = DockStyle.Top;
-            _paramsTable.GrowStyle = TableLayoutPanelGrowStyle.AddRows;
-            _paramsTable.Margin = new Padding(0);
-            _paramsTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92F));
-            _paramsTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-
-            _errorProgram.Text = "Demo.exe";
-            _missingDll.Text = "MSVCP140.dll";
-            _errorName.Text = "0xC0000005";
-            _errorCode.Text = "Access violation";
-            _address.Text = "0x00007FF612340000";
-            _operate.Text = "0x00401000";
-            _memoryAddress.Text = "0x00000000";
-            _cannotBe.Text = "read";
-
-            _customTitle.Text = "自定义错误";
-            _customText.Text = "这里是可以自定义的正文。\r\n可以换行。";
-            _customText.Multiline = true;
-            _customText.Height = 64;
-            _customText.ScrollBars = ScrollBars.Vertical;
-            _customText.AcceptsReturn = true;
-
-            _customIcon.DropDownStyle = ComboBoxStyle.DropDownList;
-            _customIcon.Items.AddRange(new object[] { "无", "错误", "警告", "信息", "问号" });
-            _customIcon.SelectedIndex = 1;
-
-            _messageBoxButtonsCombo.DropDownStyle = ComboBoxStyle.DropDownList;
-            _messageBoxButtonsCombo.Items.AddRange(new object[]
-            {
-                "确定",
-                "确定|取消",
-                "是|否",
-                "是|否|取消",
-                "重试|取消",
-                "中止|重试|忽略",
-                "取消|重试|继续",
-            });
-            _messageBoxButtonsCombo.SelectedIndex = 0;
-
-            _messageBoxHelp.Text = "显示帮助按钮";
-            _messageBoxHelp.AutoSize = true;
-            _messageBoxHelp.Margin = new Padding(0, 8, 0, 4);
-
-            _hideClose.Text = "隐藏右上角关闭按钮";
-            _hideClose.AutoSize = true;
-
-            _buttonsPanel.AutoSize = true;
-            _buttonsPanel.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-            _buttonsPanel.WrapContents = true;
-            _buttonsPanel.Dock = DockStyle.Fill;
-            _buttonsPanel.Margin = new Padding(0);
-            _buttonsPanel.MinimumSize = new Size(0, 30);
-
-            string[] buttonLabels = { "确定", "取消", "是", "否", "重试", "忽略", "中止", "继续" };
-            _buttonChecks = new CheckBox[buttonLabels.Length];
-            for (int i = 0; i < buttonLabels.Length; i++)
-            {
-                var checkBox = new CheckBox
-                {
-                    Text = buttonLabels[i],
-                    AutoSize = true,
-                    Margin = new Padding(0, 0, 16, 4),
-                };
-                checkBox.CheckedChanged += (_, _) => UpdatePreview();
-                _buttonsPanel.Controls.Add(checkBox);
-                _buttonChecks[i] = checkBox;
-            }
-            _buttonChecks[0].Checked = true;
-
-            foreach (TextBox textBox in new[]
-                     {
-                         _errorProgram, _missingDll, _errorName, _errorCode, _address,
-                         _operate, _memoryAddress, _cannotBe, _customTitle, _customText,
-                     })
-            {
-                textBox.TextChanged += (_, _) => UpdatePreview();
-            }
-            _customIcon.SelectedIndexChanged += (_, _) => UpdatePreview();
-            _messageBoxButtonsCombo.SelectedIndexChanged += (_, _) => UpdatePreview();
-            _messageBoxHelp.CheckedChanged += (_, _) => UpdatePreview();
-            _hideClose.CheckedChanged += (_, _) => UpdatePreview();
-
-            _logFolder.Text = GetDefaultLogFolder();
+            _logFolder.Value = GetDefaultLogFolder();
+            _logFolder.TextAlignment = HorizontalAlignment.Left;
             _logFolder.Dock = DockStyle.Fill;
             _logFolder.Margin = new Padding(0, 4, 8, 4);
 
@@ -215,62 +117,86 @@ namespace ErrorReportLauncher
 
         private void BuildLayout()
         {
-            _content.AutoSize = true;
-            _content.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-            _content.ColumnCount = 1;
-            _content.RowCount = 5;
-            _content.Location = new Point(18, 18);
-            _content.Margin = new Padding(0);
-            _content.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 660F));
-            for (int i = 0; i < 5; i++)
+            var root = new TableLayoutPanel
             {
-                _content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            }
-
-            var functionPanel = new FlowLayoutPanel
-            {
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                WrapContents = false,
-                Margin = new Padding(0),
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 5,
+                Padding = new Padding(18),
+                BackColor = BackColor,
             };
-            functionPanel.Controls.Add(new Label
+            root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+            var topPanel = new TableLayoutPanel
             {
-                Text = "功能",
+                AutoSize = false,
+                Height = S(34),
+                Dock = DockStyle.Top,
+                ColumnCount = 3,
+                RowCount = 1,
+                Margin = new Padding(0, 0, 0, 8),
+            };
+            topPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            topPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(132)));
+            topPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            topPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, S(34)));
+            topPanel.Controls.Add(new Label
+            {
+                Text = "弹窗组（按顺序执行）",
                 AutoSize = true,
+                Anchor = AnchorStyles.Left,
                 TextAlign = ContentAlignment.MiddleLeft,
-                Margin = new Padding(0, 8, 8, 0),
-            });
-            functionPanel.Controls.Add(_functionCombo);
-            _content.Controls.Add(functionPanel, 0, 0);
-            _content.Controls.Add(_preview, 0, 1);
-            _content.Controls.Add(_paramsTable, 0, 2);
+                Font = new Font(Font, FontStyle.Bold),
+                Margin = new Padding(0, 0, S(16), 0),
+            }, 0, 0);
+            _addButton.Dock = DockStyle.Fill;
+            _addButton.Margin = new Padding(0);
+            topPanel.Controls.Add(_addButton, 1, 0);
+            root.Controls.Add(topPanel, 0, 0);
+
+            BuildHeader();
+            root.Controls.Add(_header, 0, 1);
+
+            root.Controls.Add(_rowsPanel, 0, 2);
 
             var logPanel = new TableLayoutPanel
             {
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                AutoSize = false,
+                Height = S(34),
                 ColumnCount = 4,
                 RowCount = 1,
                 Dock = DockStyle.Top,
                 Margin = new Padding(0, 8, 0, 0),
             };
-            logPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92F));
+            logPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(92)));
             logPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            logPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 44F));
-            logPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            logPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            logPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(44)));
+            logPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(220)));
+            logPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, S(34)));
             logPanel.Controls.Add(new Label
             {
                 Text = "日志文件夹",
-                AutoSize = true,
+                Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,
-                Margin = new Padding(0, 8, 8, 0),
+                Margin = new Padding(0),
             }, 0, 0);
+            _logFolder.Dock = DockStyle.Fill;
+            _logFolder.Margin = new Padding(0, 0, S(8), 0);
             logPanel.Controls.Add(_logFolder, 1, 0);
+            _browseButton.Dock = DockStyle.Fill;
+            _browseButton.Margin = new Padding(0);
             logPanel.Controls.Add(_browseButton, 2, 0);
+            _useRuntimeFolder.AutoSize = false;
+            _useRuntimeFolder.Dock = DockStyle.Fill;
+            _useRuntimeFolder.TextAlign = ContentAlignment.MiddleLeft;
+            _useRuntimeFolder.Margin = new Padding(S(8), 0, 0, 0);
             logPanel.Controls.Add(_useRuntimeFolder, 3, 0);
-            _content.Controls.Add(logPanel, 0, 3);
+            root.Controls.Add(logPanel, 0, 3);
 
             var bottomPanel = new FlowLayoutPanel
             {
@@ -281,279 +207,231 @@ namespace ErrorReportLauncher
             };
             bottomPanel.Controls.Add(_generateButton);
             bottomPanel.Controls.Add(_statusLabel);
-            _content.Controls.Add(bottomPanel, 0, 4);
+            root.Controls.Add(bottomPanel, 0, 4);
 
-            Controls.Add(_content);
+            Controls.Add(root);
         }
 
-        private void BuildParameterRows()
+        private void BuildHeader()
         {
-            if (_functionCombo.SelectedItem is not FunctionOption option)
+            _header.Dock = DockStyle.Top;
+            _header.Height = S(30);
+            _header.ColumnCount = 7;
+            _header.RowCount = 1;
+            _header.Margin = new Padding(0);
+            _header.BackColor = Color.FromArgb(242, 244, 247);
+            _header.CellBorderStyle = TableLayoutPanelCellBorderStyle.None;
+            _header.Paint += HeaderPaint;
+            _header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(40)));
+            _header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(50)));
+            _header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            _header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(90)));
+            _header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(95)));
+            _header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(65)));
+            _header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(72)));
+            _header.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+            AddHeaderLabel(string.Empty, 0, 1);
+            AddHeaderLabel("序号", 1, 1);
+            AddHeaderLabel("弹窗", 2, 1);
+            AddHeaderLabel("弹出次数", 3, 1);
+            AddHeaderLabel("无限循环", 4, 1);
+            AddHeaderLabel("操作", 5, 2);
+        }
+
+        private void AddHeaderLabel(string text, int column, int span)
+        {
+            var label = new Label
+            {
+                Text = text,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Margin = new Padding(0),
+                Font = new Font(Font, FontStyle.Bold),
+            };
+            _header.Controls.Add(label, column, 0);
+            if (span > 1)
+            {
+                _header.SetColumnSpan(label, span);
+            }
+        }
+
+        private void HeaderPaint(object? sender, PaintEventArgs e)
+        {
+            using var pen = new Pen(Color.FromArgb(214, 216, 220));
+            e.Graphics.DrawLine(pen, 0, _header.Height - 1, _header.Width, _header.Height - 1);
+        }
+
+        private void RefreshList()
+        {
+            _rowsPanel.SuspendLayout();
+            foreach (PopupRowControl row in _rows)
+            {
+                row.Dispose();
+            }
+            _rows.Clear();
+            _rowsPanel.Controls.Clear();
+
+            _rowHeight = S(44);
+            for (int i = 0; i < _popups.Count; i++)
+            {
+                int index = i;
+                var row = new PopupRowControl(_popups[i], index, _scale, _rowHeight);
+                row.AllowDrop = true;
+                row.DragOver += RowsPanelDragOver;
+                row.DragDrop += RowsPanelDragDrop;
+                row.EditRequested += (_, _) => EditPopup(index);
+                row.DeleteRequested += (_, _) => DeletePopup(index);
+                row.Changed += (_, _) => UpdateStatus();
+                _rows.Add(row);
+                _rowsPanel.Controls.Add(row);
+            }
+
+            _rowsPanel.ResumeLayout(performLayout: false);
+            RepositionRows();
+            UpdateStatus();
+        }
+
+        private void RepositionRows()
+        {
+            if (_repositioning)
             {
                 return;
             }
 
-            _suspendPreview = true;
-            foreach (Label label in _generatedLabels)
+            _repositioning = true;
+            try
             {
-                label.Dispose();
+                _rowHeight = S(44);
+                int count = _rows.Count;
+                bool needScroll = count * _rowHeight > _rowsPanel.ClientSize.Height;
+                int width = _rowsPanel.ClientSize.Width - 2;
+                if (needScroll)
+                {
+                    width -= SystemInformation.VerticalScrollBarWidth;
+                }
+                width = Math.Max(200, width);
+
+                int y = 0;
+                foreach (PopupRowControl row in _rows)
+                {
+                    row.Location = new Point(0, y);
+                    row.Size = new Size(width, _rowHeight);
+                    y += _rowHeight;
+                }
+
+                _rowsPanel.AutoScrollMinSize = new Size(0, Math.Max(0, count * _rowHeight + 2));
             }
-            _generatedLabels.Clear();
-            _paramsTable.Controls.Clear();
-            _paramsTable.RowStyles.Clear();
-            _paramsTable.RowCount = 0;
-
-            switch (option.Kind)
+            finally
             {
-                case ReportFunction.DllMissing:
-                    EnsureDefault(_errorProgram, "Demo.exe");
-                    EnsureDefault(_missingDll, "MSVCP140.dll");
-                    AddRow("程序名", _errorProgram);
-                    AddRow("缺失模块", _missingDll);
-                    break;
-
-                case ReportFunction.ExeError:
-                    EnsureDefault(_errorProgram, "Demo.exe");
-                    EnsureDefault(_errorName, "0xC0000005");
-                    EnsureDefault(_errorCode, "Access violation");
-                    EnsureDefault(_address, "0x00007FF612340000");
-                    AddRow("程序名", _errorProgram);
-                    AddRow("异常名", _errorName);
-                    AddRow("错误代码", _errorCode);
-                    AddRow("地址", _address);
-                    break;
-
-                case ReportFunction.MemoryError:
-                    EnsureDefault(_errorProgram, "Demo.exe");
-                    EnsureDefault(_operate, "0x00401000");
-                    EnsureDefault(_memoryAddress, "0x00000000");
-                    EnsureDefault(_cannotBe, "read");
-                    AddRow("程序名", _errorProgram);
-                    AddRow("指令地址", _operate);
-                    AddRow("被引用地址", _memoryAddress);
-                    AddRow("访问类型", _cannotBe);
-                    break;
-
-                case ReportFunction.Custom:
-                    AddRow("标题", _customTitle);
-                    AddRow("正文", _customText, 74);
-                    AddRow("图标", _customIcon);
-                    AddRow("按钮", _buttonsPanel, 64);
-                    AddRow("选项", _hideClose);
-                    break;
-
-                case ReportFunction.CustomMessageBox:
-                    AddRow("标题", _customTitle);
-                    AddRow("正文", _customText, 74);
-                    AddRow("图标", _customIcon);
-                    AddRow("按钮组合", _messageBoxButtonsCombo);
-                    AddRow("选项", _messageBoxHelp);
-                    break;
-            }
-
-            _paramsTable.ResumeLayout(performLayout: true);
-            _content.PerformLayout();
-            _suspendPreview = false;
-            UpdatePreview();
-        }
-
-        private void AddRow(string label, Control control, int height = 0)
-        {
-            int row = _paramsTable.RowCount++;
-            _paramsTable.RowStyles.Add(height > 0
-                ? new RowStyle(SizeType.Absolute, height)
-                : new RowStyle(SizeType.AutoSize));
-
-            var labelControl = new Label
-            {
-                Text = label,
-                AutoSize = true,
-                TextAlign = ContentAlignment.MiddleLeft,
-                Margin = new Padding(0, 8, 8, 0),
-            };
-            _generatedLabels.Add(labelControl);
-            _paramsTable.Controls.Add(labelControl, 0, row);
-
-            control.Dock = control is CheckBox ? DockStyle.None : DockStyle.Fill;
-            control.Margin = new Padding(0, 4, 0, 4);
-            _paramsTable.Controls.Add(control, 1, row);
-        }
-
-        private void EnsureDefault(TextBox textBox, string value)
-        {
-            if (string.IsNullOrEmpty(textBox.Text))
-            {
-                textBox.Text = value;
+                _repositioning = false;
             }
         }
 
-        private void UpdatePreview()
+        private void AddPopup()
         {
-            if (_suspendPreview)
+            try
+            {
+                using var editor = new PopupEditorForm(null, isEdit: false);
+                if (editor.ShowDialog(this) == DialogResult.OK && editor.Result is not null)
+                {
+                    PopupDefinition popup = editor.Result;
+                    popup.RepeatCount = 1;
+                    popup.Infinite = false;
+                    _popups.Add(popup);
+                    RefreshList();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.ToString(), "无法打开弹窗编辑器",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void EditPopup(int index)
+        {
+            PopupDefinition old = _popups[index];
+            using var editor = new PopupEditorForm(old.Clone(), isEdit: true);
+            if (editor.ShowDialog(this) == DialogResult.OK && editor.Result is not null)
+            {
+                PopupDefinition popup = editor.Result;
+                popup.RepeatCount = old.RepeatCount;
+                popup.Infinite = old.Infinite;
+                _popups[index] = popup;
+                RefreshList();
+            }
+        }
+
+        private void DeletePopup(int index)
+        {
+            DialogResult result = MessageBox.Show(
+                this,
+                $"删除第 {index + 1} 个弹窗？",
+                "ErrorReportMain",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+            if (result == DialogResult.Yes)
+            {
+                _popups.RemoveAt(index);
+                RefreshList();
+            }
+        }
+
+        private void UpdateStatus()
+        {
+            int infiniteIndex = _popups.FindIndex(popup => popup.Infinite);
+            if (infiniteIndex >= 0 && infiniteIndex != _popups.Count - 1)
+            {
+                _statusLabel.Text = "错误：无限循环弹窗必须是最后一个。";
+                _statusLabel.ForeColor = Color.Firebrick;
+                return;
+            }
+
+            _statusLabel.ForeColor = Color.DimGray;
+            _statusLabel.Text = $"{_popups.Count} 个弹窗";
+        }
+
+        private void RowsPanelDragOver(object? sender, DragEventArgs e)
+        {
+            e.Effect = e.Data != null && e.Data.GetDataPresent(typeof(int))
+                ? DragDropEffects.Move
+                : DragDropEffects.None;
+        }
+
+        private void RowsPanelDragDrop(object? sender, DragEventArgs e)
+        {
+            if (e.Data is null || !e.Data.GetDataPresent(typeof(int)))
             {
                 return;
             }
-            _preview.Data = BuildPreviewData();
-        }
 
-        private PreviewData BuildPreviewData()
-        {
-            if (_functionCombo.SelectedItem is not FunctionOption option)
+            int source = (int)e.Data.GetData(typeof(int));
+            if (source < 0 || source >= _popups.Count)
             {
-                return new PreviewData();
+                return;
             }
 
-            string program = TextOr(_errorProgram.Text, "未知程序");
-
-            switch (option.Kind)
+            Point point = _rowsPanel.PointToClient(new Point(e.X, e.Y));
+            int target = _rows.Count;
+            for (int i = 0; i < _rows.Count; i++)
             {
-                case ReportFunction.DllMissing:
+                if (point.Y < _rows[i].Top + _rows[i].Height / 2)
                 {
-                    string missingDll = TextOr(_missingDll.Text, "未知模块");
-                    return new PreviewData
-                    {
-                        Title = $"{program} - 系统错误",
-                        Body = $"无法启动此程序，因为计算机中丢失 {missingDll}。尝试重新安装该程序以解决此问题。",
-                        Icon = "error",
-                        Buttons = new[] { "确定" },
-                    };
+                    target = i;
+                    break;
                 }
-
-                case ReportFunction.ExeError:
-                {
-                    string errorName = TextOr(_errorName.Text, "未知异常");
-                    string errorCode = TextOr(_errorCode.Text, "未知代码");
-                    string address = TextOr(_address.Text, "未知地址");
-                    return new PreviewData
-                    {
-                        Title = $"{program} - 应用程序错误",
-                        Body = $"应用程序发生异常 {errorName} ({errorCode})，位置为 {address}。\r\n\r\n"
-                               + "要终止程序，请单击“确定”。\r\n要调试程序，请单击“取消”。",
-                        Icon = "error",
-                        Buttons = new[] { "确定", "取消" },
-                    };
-                }
-
-                case ReportFunction.MemoryError:
-                {
-                    string operate = TextOr(_operate.Text, "0x00000000");
-                    string memoryAddress = TextOr(_memoryAddress.Text, "0x00000000");
-                    string cannotBe = TextOr(_cannotBe.Text, "read");
-                    return new PreviewData
-                    {
-                        Title = $"{program} - 应用程序错误",
-                        Body = $"\"{operate}\" 指令引用的 \"{memoryAddress}\" 内存。该内存不能为 \"{cannotBe}\"。\r\n\r\n"
-                               + "要终止程序，请单击“确定”。\r\n要调试程序，请单击“取消”。",
-                        Icon = "error",
-                        Buttons = new[] { "确定", "取消" },
-                    };
-                }
-
-                case ReportFunction.Custom:
-                {
-                    string[] selectedButtons = _buttonChecks
-                        .Where(checkBox => checkBox.Checked)
-                        .Select(checkBox => checkBox.Text)
-                        .ToArray();
-                    if (selectedButtons.Length == 0)
-                    {
-                        selectedButtons = new[] { "确定" };
-                    }
-                    return new PreviewData
-                    {
-                        Title = TextOr(_customTitle.Text, "错误"),
-                        Body = _customText.Text,
-                        Icon = GetSelectedIconKey(),
-                        Buttons = selectedButtons,
-                        HideClose = _hideClose.Checked,
-                    };
-                }
-
-                case ReportFunction.CustomMessageBox:
-                {
-                    string buttons = GetMessageBoxButtonsSpec();
-                    if (_messageBoxHelp.Checked)
-                    {
-                        buttons += "|help";
-                    }
-                    return new PreviewData
-                    {
-                        Title = TextOr(_customTitle.Text, "错误"),
-                        Body = _customText.Text,
-                        Icon = GetSelectedIconKey(),
-                        Buttons = GetMessageBoxButtonLabels(buttons),
-                    };
-                }
-
-                default:
-                    return new PreviewData();
-            }
-        }
-
-        private string GetMessageBoxButtonsSpec()
-        {
-            // 下拉框显示中文标签，写入配置/DLL 时转回标准按钮键。
-            return _messageBoxButtonsCombo.Text.Trim() switch
-            {
-                "确定|取消" => "okcancel",
-                "是|否" => "yesno",
-                "是|否|取消" => "yesnocancel",
-                "重试|取消" => "retrycancel",
-                "中止|重试|忽略" => "abortretryignore",
-                "取消|重试|继续" => "canceltrycontinue",
-                _ => "ok",
-            };
-        }
-
-        private static string[] GetMessageBoxButtonLabels(string spec)
-        {
-            bool hasHelp = false;
-            string? setLabel = null;
-            foreach (string token in spec.Split('|'))
-            {
-                string key = token.Trim();
-                if (key.Length == 0)
-                {
-                    continue;
-                }
-                if (string.Equals(key, "help", StringComparison.OrdinalIgnoreCase))
-                {
-                    hasHelp = true;
-                    continue;
-                }
-
-                setLabel = key.ToLowerInvariant() switch
-                {
-                    "ok" => "确定",
-                    "okcancel" => "确定|取消",
-                    "yesno" => "是|否",
-                    "yesnocancel" => "是|否|取消",
-                    "retrycancel" => "重试|取消",
-                    "abortretryignore" => "中止|重试|忽略",
-                    "canceltrycontinue" => "取消|重试|继续",
-                    _ => null,
-                };
             }
 
-            string[] labels = (setLabel ?? "确定").Split('|');
-            return hasHelp ? labels.Append("帮助").ToArray() : labels;
-        }
-
-        private string GetSelectedIconKey()
-        {
-            switch (_customIcon.SelectedIndex)
+            PopupDefinition popup = _popups[source];
+            _popups.RemoveAt(source);
+            if (target > source)
             {
-                case 1:
-                    return "error";
-                case 2:
-                    return "warning";
-                case 3:
-                    return "info";
-                case 4:
-                    return "question";
-                default:
-                    return "none";
+                target--;
             }
+            target = Math.Max(0, Math.Min(target, _popups.Count));
+            _popups.Insert(target, popup);
+            RefreshList();
         }
 
         private void UpdateLogFolderEnabledState()
@@ -568,18 +446,52 @@ namespace ErrorReportLauncher
             using var dialog = new FolderBrowserDialog
             {
                 Description = "选择日志输出文件夹",
-                SelectedPath = Directory.Exists(_logFolder.Text) ? _logFolder.Text : string.Empty,
+                SelectedPath = Directory.Exists(_logFolder.Value) ? _logFolder.Value : string.Empty,
                 ShowNewFolderButton = true,
             };
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
-                _logFolder.Text = dialog.SelectedPath;
+                _logFolder.Value = dialog.SelectedPath;
             }
         }
 
         private void GenerateExecutable()
         {
-            string logFolder = _logFolder.Text.Trim();
+            if (_popups.Count == 0)
+            {
+                MessageBox.Show(this, "请先添加至少一个弹窗。", "ErrorReportMain",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            int infiniteIndex = _popups.FindIndex(popup => popup.Infinite);
+            if (infiniteIndex >= 0 && infiniteIndex != _popups.Count - 1)
+            {
+                MessageBox.Show(
+                    this,
+                    "无限循环弹窗必须是最后一个。\n\n它后面的弹窗永远不会执行，请调整顺序。",
+                    "ErrorReportMain",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            for (int i = 0; i < _popups.Count; i++)
+            {
+                PopupDefinition popup = _popups[i];
+                if (!popup.Infinite && popup.RepeatCount < 1)
+                {
+                    MessageBox.Show(
+                        this,
+                        $"第 {i + 1} 个弹窗的弹出次数必须是正整数。",
+                        "ErrorReportMain",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    return;
+                }
+            }
+
+            string logFolder = _logFolder.Value.Trim();
             if (!_useRuntimeFolder.Checked)
             {
                 if (logFolder.Length == 0)
@@ -626,7 +538,6 @@ namespace ErrorReportLauncher
             }
             else
             {
-                // 日志跟随生成程序的运行文件夹，这里只为“另存为”对话框准备一个初始目录。
                 try
                 {
                     logFolder = logFolder.Length > 0
@@ -684,8 +595,16 @@ namespace ErrorReportLauncher
             try
             {
                 Cursor = Cursors.WaitCursor;
-                PlayerConfig config = BuildPlayerConfig(logFolder);
+                PopupDefinition first = _popups[0];
+                var config = new PlayerConfig
+                {
+                    Function = first.Function,
+                    LogFolder = logFolder,
+                    UseRuntimeFolder = _useRuntimeFolder.Checked,
+                    Popups = _popups.Select(popup => popup.Clone()).ToList(),
+                };
                 Generator.Generate(Application.ExecutablePath, dllPath, dialog.FileName, config);
+                _statusLabel.ForeColor = Color.DimGray;
                 _statusLabel.Text = "已生成：" + dialog.FileName;
             }
             catch (Exception ex)
@@ -697,58 +616,6 @@ namespace ErrorReportLauncher
             {
                 Cursor = Cursors.Default;
             }
-        }
-
-        private PlayerConfig BuildPlayerConfig(string logFolder)
-        {
-            var option = (FunctionOption)_functionCombo.SelectedItem!;
-            var config = new PlayerConfig
-            {
-                Function = option.Kind,
-                LogFolder = logFolder,
-                UseRuntimeFolder = _useRuntimeFolder.Checked,
-            };
-
-            switch (option.Kind)
-            {
-                case ReportFunction.DllMissing:
-                    config.ErrorProgram = _errorProgram.Text;
-                    config.MissingDll = _missingDll.Text;
-                    break;
-                case ReportFunction.ExeError:
-                    config.ErrorProgram = _errorProgram.Text;
-                    config.ErrorName = _errorName.Text;
-                    config.ErrorCode = _errorCode.Text;
-                    config.Address = _address.Text;
-                    break;
-                case ReportFunction.MemoryError:
-                    config.ErrorProgram = _errorProgram.Text;
-                    config.Operate = _operate.Text;
-                    config.MemoryAddress = _memoryAddress.Text;
-                    config.CannotBe = _cannotBe.Text;
-                    break;
-                case ReportFunction.Custom:
-                    config.Title = _customTitle.Text;
-                    config.Text = _customText.Text;
-                    config.Icon = GetSelectedIconKey();
-                    config.Buttons = string.Join(
-                        "|",
-                        _buttonChecks.Where(checkBox => checkBox.Checked).Select(checkBox => checkBox.Text));
-                    config.HideCloseButton = _hideClose.Checked ? 1 : 0;
-                    break;
-                case ReportFunction.CustomMessageBox:
-                    config.Title = _customTitle.Text;
-                    config.Text = _customText.Text;
-                    config.Icon = GetSelectedIconKey();
-                    config.Buttons = GetMessageBoxButtonsSpec();
-                    if (_messageBoxHelp.Checked)
-                    {
-                        config.Buttons += "|help";
-                    }
-                    break;
-            }
-
-            return config;
         }
 
         private static string? FindDllPath()
@@ -801,8 +668,7 @@ namespace ErrorReportLauncher
                     return false;
                 }
 
-                ushort machine = reader.ReadUInt16();
-                return machine == 0x8664;
+                return reader.ReadUInt16() == 0x8664;
             }
             catch (IOException)
             {
@@ -822,11 +688,6 @@ namespace ErrorReportLauncher
                 documents = AppContext.BaseDirectory;
             }
             return Path.Combine(documents, "ErrorReportLogs");
-        }
-
-        private static string TextOr(string value, string fallback)
-        {
-            return string.IsNullOrEmpty(value) ? fallback : value;
         }
 
         private static Bitmap CreateFolderIcon(int size)
@@ -849,22 +710,24 @@ namespace ErrorReportLauncher
             base.OnLoad(e);
 
             float scale = DpiHelper.GetScale(Handle);
-            if (scale <= 1.01f)
+            if (scale > 1.01f)
             {
-                return;
+                SuspendLayout();
+                Scale(new SizeF(scale, scale));
+                ClientSize = new Size(
+                    (int)Math.Round(820 * scale),
+                    (int)Math.Round(650 * scale));
+                MinimumSize = new Size(
+                    (int)Math.Round(840 * scale),
+                    (int)Math.Round(600 * scale));
+                ResumeLayout(performLayout: true);
+                _scale = scale;
             }
 
-            SuspendLayout();
-            Scale(new SizeF(scale, scale));
-            ClientSize = new Size(
-                (int)Math.Round(700 * scale),
-                (int)Math.Round(650 * scale));
-            MinimumSize = new Size(
-                (int)Math.Round(720 * scale),
-                (int)Math.Round(620 * scale));
-            ResumeLayout(performLayout: true);
+            ApplyHeaderScale();
+            RefreshList();
 
-            int iconSize = Math.Max(16, (int)Math.Round(16 * scale));
+            int iconSize = Math.Max(16, S(16));
             if (_browseIcon.Width != iconSize)
             {
                 Bitmap icon = CreateFolderIcon(iconSize);
@@ -876,6 +739,17 @@ namespace ErrorReportLauncher
             CenterToScreen();
         }
 
+        private void ApplyHeaderScale()
+        {
+            _header.Height = S(30);
+            _header.ColumnStyles[0].Width = S(40);
+            _header.ColumnStyles[1].Width = S(50);
+            _header.ColumnStyles[3].Width = S(90);
+            _header.ColumnStyles[4].Width = S(95);
+            _header.ColumnStyles[5].Width = S(65);
+            _header.ColumnStyles[6].Width = S(72);
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
@@ -883,24 +757,6 @@ namespace ErrorReportLauncher
                 _browseIcon.Dispose();
             }
             base.Dispose(disposing);
-        }
-
-        private sealed class FunctionOption
-        {
-            public FunctionOption(ReportFunction kind, string display)
-            {
-                Kind = kind;
-                Display = display;
-            }
-
-            public ReportFunction Kind { get; }
-
-            public string Display { get; }
-
-            public override string ToString()
-            {
-                return Display;
-            }
         }
     }
 }

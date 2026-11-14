@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -59,12 +60,9 @@ namespace ErrorReportLauncher
 
         public static void Run(PlayerConfig config)
         {
-            string logFolder = ResolveLogFolder(config);
-            string? error = null;
-            int result = -2;
-
             try
             {
+                string logFolder = ResolveLogFolder(config);
                 if (string.IsNullOrWhiteSpace(logFolder))
                 {
                     throw new InvalidOperationException("日志文件夹为空。");
@@ -73,51 +71,94 @@ namespace ErrorReportLauncher
                 Directory.CreateDirectory(logFolder);
                 EnsureModule(config);
 
-                result = config.Function switch
-                {
-                    ReportFunction.DllMissing => GetFunction<DllMissingErrorFn>("DLL_MISSING_ERROR")(
-                        config.ErrorProgram, config.MissingDll),
-                    ReportFunction.ExeError => GetFunction<ExeErrorFn>("EXE_ERROR")(
-                        config.ErrorProgram, config.ErrorName, config.ErrorCode, config.Address),
-                    ReportFunction.MemoryError => GetFunction<MemoryErrorFn>("MEMORY_ERROR")(
-                        config.ErrorProgram, config.Operate, config.MemoryAddress, config.CannotBe),
-                    ReportFunction.Custom => GetFunction<CustomErrorFn>("CUSTOM_ERROR")(
-                        config.Title, config.Text, config.Icon, config.Buttons, config.HideCloseButton),
-                    ReportFunction.CustomMessageBox => GetFunction<CustomMessageBoxFn>("CUSTOM_MESSAGEBOX")(
-                        config.Title, config.Text, config.Icon, config.Buttons),
-                    _ => -2,
-                };
-            }
-            catch (Exception ex)
-            {
-                error = ex.ToString();
-            }
+                List<PopupDefinition> popups = config.Popups.Count > 0
+                    ? config.Popups
+                    : new List<PopupDefinition> { config };
+                ValidatePopups(popups);
 
-            try
-            {
-                if (!string.IsNullOrWhiteSpace(logFolder))
+                string logPath = CreateLogPath(logFolder);
+                WriteLogHeader(logPath, popups.Count);
+
+                for (int popupIndex = 0; popupIndex < popups.Count; popupIndex++)
                 {
-                    Directory.CreateDirectory(logFolder);
-                    WriteLog(logFolder, config, result, error);
+                    PopupDefinition popup = popups[popupIndex];
+                    int iteration = 0;
+                    while (popup.Infinite || iteration < Math.Max(1, popup.RepeatCount))
+                    {
+                        iteration++;
+                        int result = -2;
+                        string? error = null;
+                        try
+                        {
+                            result = Invoke(popup);
+                        }
+                        catch (Exception ex)
+                        {
+                            error = ex.ToString();
+                        }
+
+                        AppendLogEntry(
+                            logPath, popup, popupIndex + 1, popups.Count, iteration, result, error);
+
+                        if (error is not null)
+                        {
+                            MessageBox.Show(
+                                "播放弹窗失败：\n" + error,
+                                "ErrorReportMain",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error);
+                            return;
+                        }
+                    }
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show(
-                    "播放弹窗失败，日志也无法写入：\n" + ex.Message,
+                    "播放弹窗组失败：\n" + ex.Message,
                     "ErrorReportMain",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
-                return;
+            }
+        }
+
+        private static int Invoke(PopupDefinition popup)
+        {
+            return popup.Function switch
+            {
+                ReportFunction.DllMissing => GetFunction<DllMissingErrorFn>("DLL_MISSING_ERROR")(
+                    popup.ErrorProgram, popup.MissingDll),
+                ReportFunction.ExeError => GetFunction<ExeErrorFn>("EXE_ERROR")(
+                    popup.ErrorProgram, popup.ErrorName, popup.ErrorCode, popup.Address),
+                ReportFunction.MemoryError => GetFunction<MemoryErrorFn>("MEMORY_ERROR")(
+                    popup.ErrorProgram, popup.Operate, popup.MemoryAddress, popup.CannotBe),
+                ReportFunction.Custom => GetFunction<CustomErrorFn>("CUSTOM_ERROR")(
+                    popup.Title, popup.Text, popup.Icon, popup.Buttons, popup.HideCloseButton),
+                ReportFunction.CustomMessageBox => GetFunction<CustomMessageBoxFn>("CUSTOM_MESSAGEBOX")(
+                    popup.Title, popup.Text, popup.Icon, popup.Buttons),
+                _ => -2,
+            };
+        }
+
+        private static void ValidatePopups(IReadOnlyList<PopupDefinition> popups)
+        {
+            if (popups.Count == 0)
+            {
+                throw new InvalidOperationException("弹窗组为空。");
             }
 
-            if (error is not null)
+            for (int i = 0; i < popups.Count; i++)
             {
-                MessageBox.Show(
-                    "播放弹窗失败：\n" + error,
-                    "ErrorReportMain",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                PopupDefinition popup = popups[i];
+                if (!popup.Infinite && popup.RepeatCount < 1)
+                {
+                    throw new InvalidOperationException("弹窗次数必须是正整数。");
+                }
+                if (popup.Infinite && i != popups.Count - 1)
+                {
+                    throw new InvalidOperationException(
+                        "无限循环弹窗必须是最后一个；它后面的弹窗永远不会执行。");
+                }
             }
         }
 
@@ -233,7 +274,7 @@ namespace ErrorReportLauncher
             return builder.ToString();
         }
 
-        private static void WriteLog(string folder, PlayerConfig config, int result, string? error)
+        private static string CreateLogPath(string folder)
         {
             string timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
             string path = Path.Combine(folder, $"ErrorReport-{timestamp}.log");
@@ -241,51 +282,74 @@ namespace ErrorReportLauncher
             {
                 path = Path.Combine(folder, $"ErrorReport-{timestamp}-{index}.log");
             }
+            return path;
+        }
 
+        private static void WriteLogHeader(string path, int popupCount)
+        {
             var builder = new StringBuilder();
             builder.AppendLine($"Local Time: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-            builder.AppendLine($"Function: {GetFunctionName(config.Function)}");
+            builder.AppendLine($"Popup Count: {popupCount}");
+            File.WriteAllText(path, builder.ToString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+        }
 
-            switch (config.Function)
+        private static void AppendLogEntry(
+            string path,
+            PopupDefinition popup,
+            int popupIndex,
+            int popupCount,
+            int iteration,
+            int result,
+            string? error)
+        {
+            var builder = new StringBuilder();
+            builder.AppendLine();
+            builder.AppendLine($"--- Popup {popupIndex}/{popupCount} ---");
+            builder.AppendLine($"Function: {GetFunctionName(popup.Function)}");
+
+            switch (popup.Function)
             {
                 case ReportFunction.DllMissing:
-                    builder.AppendLine($"ErrorProgram: {config.ErrorProgram}");
-                    builder.AppendLine($"MissingDll: {config.MissingDll}");
+                    builder.AppendLine($"ErrorProgram: {popup.ErrorProgram}");
+                    builder.AppendLine($"MissingDll: {popup.MissingDll}");
                     break;
                 case ReportFunction.ExeError:
-                    builder.AppendLine($"ErrorProgram: {config.ErrorProgram}");
-                    builder.AppendLine($"ErrorName: {config.ErrorName}");
-                    builder.AppendLine($"ErrorCode: {config.ErrorCode}");
-                    builder.AppendLine($"Address: {config.Address}");
+                    builder.AppendLine($"ErrorProgram: {popup.ErrorProgram}");
+                    builder.AppendLine($"ErrorName: {popup.ErrorName}");
+                    builder.AppendLine($"ErrorCode: {popup.ErrorCode}");
+                    builder.AppendLine($"Address: {popup.Address}");
                     break;
                 case ReportFunction.MemoryError:
-                    builder.AppendLine($"ErrorProgram: {config.ErrorProgram}");
-                    builder.AppendLine($"Operate: {config.Operate}");
-                    builder.AppendLine($"Address: {config.MemoryAddress}");
-                    builder.AppendLine($"CannotBe: {config.CannotBe}");
+                    builder.AppendLine($"ErrorProgram: {popup.ErrorProgram}");
+                    builder.AppendLine($"Operate: {popup.Operate}");
+                    builder.AppendLine($"Address: {popup.MemoryAddress}");
+                    builder.AppendLine($"CannotBe: {popup.CannotBe}");
                     break;
                 case ReportFunction.Custom:
-                    builder.AppendLine($"Title: {config.Title}");
-                    builder.AppendLine($"Text: {config.Text}");
-                    builder.AppendLine($"Icon: {config.Icon}");
-                    builder.AppendLine($"Buttons: {config.Buttons}");
-                    builder.AppendLine($"HideCloseButton: {config.HideCloseButton}");
+                    builder.AppendLine($"Title: {popup.Title}");
+                    builder.AppendLine($"Text: {popup.Text}");
+                    builder.AppendLine($"Icon: {popup.Icon}");
+                    builder.AppendLine($"Buttons: {popup.Buttons}");
+                    builder.AppendLine($"HideCloseButton: {popup.HideCloseButton}");
                     break;
                 case ReportFunction.CustomMessageBox:
-                    builder.AppendLine($"Title: {config.Title}");
-                    builder.AppendLine($"Text: {config.Text}");
-                    builder.AppendLine($"Icon: {config.Icon}");
-                    builder.AppendLine($"Buttons: {config.Buttons}");
+                    builder.AppendLine($"Title: {popup.Title}");
+                    builder.AppendLine($"Text: {popup.Text}");
+                    builder.AppendLine($"Icon: {popup.Icon}");
+                    builder.AppendLine($"Buttons: {popup.Buttons}");
                     break;
             }
 
+            builder.AppendLine(popup.Infinite
+                ? $"Repeat: {iteration}/∞"
+                : $"Repeat: {iteration}/{Math.Max(1, popup.RepeatCount)}");
             builder.AppendLine($"User Choice: {result}");
             if (!string.IsNullOrEmpty(error))
             {
                 builder.AppendLine($"Error: {error}");
             }
 
-            File.WriteAllText(path, builder.ToString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+            File.AppendAllText(path, builder.ToString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
         }
 
         private static string GetFunctionName(ReportFunction function)

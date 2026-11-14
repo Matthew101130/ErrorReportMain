@@ -18,35 +18,25 @@ namespace ErrorReportLauncher
     /// 追加在生成 exe 末尾的播放配置。启动器把自己复制成目标 exe 后写入这段数据，
     /// 目标 exe 启动时先检查这段数据；存在就进入播放模式，不存在就显示启动器界面。
     /// </summary>
-    public sealed class PlayerConfig
+    public sealed class PlayerConfig : PopupDefinition
     {
-        private static readonly byte[] Magic = Encoding.ASCII.GetBytes("ERLPAY03");
+        private static readonly byte[] Magic = Encoding.ASCII.GetBytes("ERLPAY04");
+        private static readonly byte[] LegacyMagic3 = Encoding.ASCII.GetBytes("ERLPAY03");
         private static readonly byte[] LegacyMagic2 = Encoding.ASCII.GetBytes("ERLPAY02");
         private static readonly byte[] LegacyMagic = Encoding.ASCII.GetBytes("ERLPAY01");
-        private const int FormatVersion = 3;
+        private const int FormatVersion = 4;
+        private const int LegacyFormatVersion3 = 3;
         private const int LegacyFormatVersion2 = 2;
         private const int LegacyFormatVersion = 1;
+        private const int MaxPopups = 1000;
 
-        public ReportFunction Function { get; set; }
         public string LogFolder { get; set; } = string.Empty;
 
         /// <summary>true 时忽略 LogFolder，日志写在播放器自己所在的文件夹。</summary>
         public bool UseRuntimeFolder { get; set; }
 
-        public string ErrorProgram { get; set; } = string.Empty;
-        public string MissingDll { get; set; } = string.Empty;
-        public string ErrorName { get; set; } = string.Empty;
-        public string ErrorCode { get; set; } = string.Empty;
-        public string Address { get; set; } = string.Empty;
-        public string Operate { get; set; } = string.Empty;
-        public string MemoryAddress { get; set; } = string.Empty;
-        public string CannotBe { get; set; } = string.Empty;
-
-        public string Title { get; set; } = string.Empty;
-        public string Text { get; set; } = string.Empty;
-        public string Icon { get; set; } = "none";
-        public string Buttons { get; set; } = string.Empty;
-        public int HideCloseButton { get; set; }
+        /// <summary>弹窗组；为空时按旧的单弹窗配置播放。</summary>
+        public List<PopupDefinition> Popups { get; set; } = new List<PopupDefinition>();
 
         /// <summary>生成时嵌入的 x64 DLL；播放器会先释放到本地缓存再加载。</summary>
         public byte[]? EmbeddedDll { get; set; }
@@ -70,20 +60,20 @@ namespace ErrorReportLauncher
                 writer.Write(FormatVersion);
                 writer.Write((int)config.Function);
                 writer.Write(config.LogFolder ?? string.Empty);
-                writer.Write(config.ErrorProgram ?? string.Empty);
-                writer.Write(config.MissingDll ?? string.Empty);
-                writer.Write(config.ErrorName ?? string.Empty);
-                writer.Write(config.ErrorCode ?? string.Empty);
-                writer.Write(config.Address ?? string.Empty);
-                writer.Write(config.Operate ?? string.Empty);
-                writer.Write(config.MemoryAddress ?? string.Empty);
-                writer.Write(config.CannotBe ?? string.Empty);
-                writer.Write(config.Title ?? string.Empty);
-                writer.Write(config.Text ?? string.Empty);
-                writer.Write(config.Icon ?? "none");
-                writer.Write(config.Buttons ?? string.Empty);
-                writer.Write(config.HideCloseButton);
+                WritePopupFields(writer, config);
                 writer.Write(config.UseRuntimeFolder);
+
+                List<PopupDefinition> popups = config.Popups ?? new List<PopupDefinition>();
+                if (popups.Count > MaxPopups)
+                {
+                    throw new InvalidOperationException("弹窗数量过多。");
+                }
+                writer.Write(popups.Count);
+                foreach (PopupDefinition popup in popups)
+                {
+                    WritePopup(writer, popup);
+                }
+
                 byte[] embeddedDll = config.EmbeddedDll ?? Array.Empty<byte>();
                 writer.Write(embeddedDll.Length);
                 writer.Write(embeddedDll);
@@ -124,6 +114,10 @@ namespace ErrorReportLauncher
                 {
                     formatVersion = FormatVersion;
                 }
+                else if (BytesEqual(magic, LegacyMagic3))
+                {
+                    formatVersion = LegacyFormatVersion3;
+                }
                 else if (BytesEqual(magic, LegacyMagic2))
                 {
                     formatVersion = LegacyFormatVersion2;
@@ -157,37 +151,37 @@ namespace ErrorReportLauncher
                 {
                     Function = (ReportFunction)reader.ReadInt32(),
                     LogFolder = reader.ReadString(),
-                    ErrorProgram = reader.ReadString(),
-                    MissingDll = reader.ReadString(),
-                    ErrorName = reader.ReadString(),
-                    ErrorCode = reader.ReadString(),
-                    Address = reader.ReadString(),
-                    Operate = reader.ReadString(),
-                    MemoryAddress = reader.ReadString(),
-                    CannotBe = reader.ReadString(),
-                    Title = reader.ReadString(),
-                    Text = reader.ReadString(),
-                    Icon = reader.ReadString(),
-                    Buttons = reader.ReadString(),
-                    HideCloseButton = reader.ReadInt32(),
                 };
+                if (!ReadPopupFields(reader, result))
+                {
+                    return false;
+                }
 
                 if (formatVersion >= 3)
                 {
-                    if (stream.Position + 1 > stream.Length)
+                    result.UseRuntimeFolder = reader.ReadBoolean();
+                }
+
+                if (formatVersion >= 4)
+                {
+                    int popupCount = reader.ReadInt32();
+                    if (popupCount < 0 || popupCount > MaxPopups)
                     {
                         return false;
                     }
-                    result.UseRuntimeFolder = reader.ReadBoolean();
+                    for (int i = 0; i < popupCount; i++)
+                    {
+                        PopupDefinition? popup = ReadPopup(reader);
+                        if (popup is null)
+                        {
+                            return false;
+                        }
+                        result.Popups.Add(popup);
+                    }
                 }
 
                 if (formatVersion >= 2)
                 {
-                    if (stream.Position + 4 > stream.Length)
-                    {
-                        return false;
-                    }
-
                     int dllLength = reader.ReadInt32();
                     if (dllLength < 0 || dllLength > stream.Length - stream.Position)
                     {
@@ -212,6 +206,77 @@ namespace ErrorReportLauncher
             {
                 return false;
             }
+        }
+
+        private static void WritePopup(BinaryWriter writer, PopupDefinition popup)
+        {
+            writer.Write((int)popup.Function);
+            WritePopupFields(writer, popup);
+            writer.Write(popup.RepeatCount < 1 ? 1 : popup.RepeatCount);
+            writer.Write(popup.Infinite);
+        }
+
+        private static PopupDefinition? ReadPopup(BinaryReader reader)
+        {
+            var popup = new PopupDefinition
+            {
+                Function = (ReportFunction)reader.ReadInt32(),
+            };
+            if (!ReadPopupFields(reader, popup))
+            {
+                return null;
+            }
+
+            int repeatCount = reader.ReadInt32();
+            bool infinite = reader.ReadBoolean();
+            if (!infinite && repeatCount < 1)
+            {
+                return null;
+            }
+
+            popup.RepeatCount = repeatCount < 1 ? 1 : repeatCount;
+            popup.Infinite = infinite;
+
+            if (!Enum.IsDefined(typeof(ReportFunction), popup.Function))
+            {
+                return null;
+            }
+            return popup;
+        }
+
+        private static void WritePopupFields(BinaryWriter writer, PopupDefinition popup)
+        {
+            writer.Write(popup.ErrorProgram ?? string.Empty);
+            writer.Write(popup.MissingDll ?? string.Empty);
+            writer.Write(popup.ErrorName ?? string.Empty);
+            writer.Write(popup.ErrorCode ?? string.Empty);
+            writer.Write(popup.Address ?? string.Empty);
+            writer.Write(popup.Operate ?? string.Empty);
+            writer.Write(popup.MemoryAddress ?? string.Empty);
+            writer.Write(popup.CannotBe ?? string.Empty);
+            writer.Write(popup.Title ?? string.Empty);
+            writer.Write(popup.Text ?? string.Empty);
+            writer.Write(popup.Icon ?? "none");
+            writer.Write(popup.Buttons ?? string.Empty);
+            writer.Write(popup.HideCloseButton);
+        }
+
+        private static bool ReadPopupFields(BinaryReader reader, PopupDefinition popup)
+        {
+            popup.ErrorProgram = reader.ReadString();
+            popup.MissingDll = reader.ReadString();
+            popup.ErrorName = reader.ReadString();
+            popup.ErrorCode = reader.ReadString();
+            popup.Address = reader.ReadString();
+            popup.Operate = reader.ReadString();
+            popup.MemoryAddress = reader.ReadString();
+            popup.CannotBe = reader.ReadString();
+            popup.Title = reader.ReadString();
+            popup.Text = reader.ReadString();
+            popup.Icon = reader.ReadString();
+            popup.Buttons = reader.ReadString();
+            popup.HideCloseButton = reader.ReadInt32();
+            return true;
         }
 
         private static byte[] ReadExactly(Stream stream, int count)

@@ -39,18 +39,29 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 
 ## 使用
 
-1. 第一行下拉框选择五个接口之一：
-   - `DLL_MISSING_ERROR`：只显示程序名、缺失模块。
-   - `EXE_ERROR`：只显示程序名、异常名、错误代码、地址。
-   - `MEMORY_ERROR`：只显示程序名、指令地址、被引用地址、访问类型。
-   - `CUSTOM_ERROR`：标题、正文、图标下拉框、按钮勾选框、隐藏关闭按钮。
-   - `CUSTOM_MESSAGEBOX`：标题、正文、图标下拉框、标准按钮组合下拉框，可勾选“显示帮助按钮”。
-2. 中间是实时预览图，会跟随参数变化。
-3. 底部“日志文件夹”可以：
-   - 直接输入路径；
-   - 或点击右侧文件夹图标，在弹出的浏览器中选择一个文件夹并确定；
-   - 勾选“日志生成在运行文件夹”后，输入框和浏览按钮会禁用，生成 exe 会把日志写在自身所在目录。
-4. 点击“生成 .exe”，选择保存位置。
+1. 主界面是**弹窗组**列表，每一行表示一个弹窗。默认带一个 `DLL_MISSING_ERROR` 弹窗。
+2. 点击“＋ 添加弹窗”，会打开原来的弹窗编辑界面：
+   - 选择五个接口之一：
+     - `DLL_MISSING_ERROR`：程序名、缺失模块；
+     - `EXE_ERROR`：程序名、异常名、错误代码、地址；
+     - `MEMORY_ERROR`：程序名、指令地址、被引用地址、访问类型；
+     - `CUSTOM_ERROR`：标题、正文、图标、按钮勾选框、隐藏关闭按钮；
+     - `CUSTOM_MESSAGEBOX`：标题、正文、图标、标准按钮组合，可勾选“显示帮助按钮”；
+   - 中间是实时预览图；
+   - 点“确定”后，这个弹窗加入弹窗组；点“取消”不修改。
+3. 每一行右侧有“编辑”和“删除”：
+   - 编辑会重新打开同一个编辑界面，并保留原来的弹出次数/无限循环设置；
+   - 删除会先确认。
+4. “弹出次数”：
+   - 未勾选“无限循环”时，必须输入正整数；
+   - 勾选“无限循环”后，次数显示为 `∞`，输入框变灰且不可编辑；
+   - 取消勾选后，次数自动恢复为 `1`。
+5. 行可以直接拖动调整顺序。若某个弹窗勾了无限循环，但它后面还有弹窗，生成时会报错，
+   因为这些弹窗永远不会执行。
+6. 底部“日志文件夹”：
+   - 直接输入路径，或点右侧文件夹图标选择；
+   - 勾选“日志生成在运行文件夹”后，输入框和浏览按钮禁用，生成 exe 会把日志写在自身所在目录。
+7. 点击“生成 .exe”，选择保存位置。
 
 自定义模式的按钮勾选框目前固定提供：
 
@@ -71,13 +82,13 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 
 ### 界面预览
 
-预设错误模式：
+弹窗组管理：
 
-![预设错误模式](launcher-preset.png)
+![弹窗组管理](launcher-group-rows-v9.png)
 
-自定义模式：
+添加/编辑弹窗：
 
-![自定义模式](launcher-custom.png)
+![弹窗编辑](launcher-custom.png)
 
 ## 生成与播放
 
@@ -90,8 +101,9 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 目标 exe 运行时：
 
 - 检测到末尾配置，就进入**播放模式**，不显示启动器界面；
-- 调用 DLL 弹出对应窗口；
-- 用户关闭窗口后，写入 `.log`：勾选“日志生成在运行文件夹”时写在 exe 旁边，
+- 按弹窗组顺序逐个调用 DLL；
+- 每个弹窗按“弹出次数”重复；无限循环会一直重复到进程被关闭；
+- 每个弹窗关闭后写入同一个 `.log`：勾选“日志生成在运行文件夹”时写在 exe 旁边，
   否则写到指定日志文件夹。
 
 实际效果（`DLL_MISSING_ERROR`，175% DPI，已带 comctl32 v6 清单）：
@@ -106,13 +118,24 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 ErrorReport-yyyyMMdd-HHmmss.log
 ```
 
-内容示例：
+一次运行写一个文件，弹窗组中的每个弹窗/每次重复追加一段：
 
 ```text
-Local Time: 2026-10-25 20:57:28
+Local Time: 2026-11-14 18:47:45
+Popup Count: 2
+
+--- Popup 1/2 ---
 Function: DLL_MISSING_ERROR
 ErrorProgram: Demo.exe
 MissingDll: MSVCP140.dll
+Repeat: 1/1
+User Choice: 1
+
+--- Popup 2/2 ---
+Function: DLL_MISSING_ERROR
+ErrorProgram: Second.exe
+MissingDll: VCRUNTIME140.dll
+Repeat: 1/2
 User Choice: 1
 ```
 
@@ -123,7 +146,7 @@ User Choice: 1
 - `CUSTOM_MESSAGEBOX`：标准 MessageBox 按钮 ID，例如 `IDYES` = 6、`IDNO` = 7、`IDCANCEL` = 2；
 - `MessageBoxW` 自身失败时可能是 0。
 
-配置格式为 `ERLPAY03`，兼容 `ERLPAY01` / `ERLPAY02`；旧版生成 exe 仍可运行。
+配置格式为 `ERLPAY04`，兼容 `ERLPAY01` / `ERLPAY02` / `ERLPAY03`；旧版生成 exe 仍可运行。
 
 ## 生成物说明
 
@@ -145,18 +168,36 @@ User Choice: 1
 - 生成 exe 依赖 .NET Framework 4.8；不是完全原生的单文件 exe。
 - 图标只支持 `none` / `error` / `warning` / `info` / `question` 这些系统图标。
 - 自定义按钮最多 8 个，排成一行；`CUSTOM_MESSAGEBOX` 只能使用标准按钮组合和系统语言文本。
+- 一个弹窗组最多 1000 个弹窗。
+- 无限循环弹窗必须是最后一个；它后面的弹窗不会执行，生成时会报错。
+- 无限循环会持续写日志，文件会不断增长；需要停止时只能结束播放器进程。
 - 勾选“日志生成在运行文件夹”时，如果 exe 放在 Program Files 等只读目录，日志会写入失败；
   此时请取消勾选并指定可写目录。
 - 不勾选运行目录时，日志文件夹是绝对路径，生成后换机器运行可能失效。
 - 生成 exe 里仍包含启动器代码（用于预览和生成），但检测到末尾配置后只执行播放逻辑。
 
+## Windows 7 说明
+
+- Windows 7 没有官方 SP2，最后版本是 **SP1**；且必须是 **x64**，并已安装 .NET Framework 4.8。
+- 启动器在 Win7/8/8.1 上会把次数和日志路径输入框退回系统原生 `EDIT`，按钮/复选框走
+  comctl32 v6 系统视觉样式；Win10/11 才使用自绘圆角输入框。
+- DLL 以 `_WIN32_WINNT=0x0601` 构建，Win10+ DPI API 全部动态加载；缺少时回退 GDI。
+- **弹窗组行、表头、拖拽柄、预览面板是自绘的，不会自动变成 Win7 原生控件的外观。**
+  如果需要“所有元素逐像素 Win7 原生”，必须把启动器改为完全使用系统控件。
+- 目前只做了静态 API/导入检查，没有在真实 Win7 上运行验证，不能给出 100% 保证。
+
 ## 实现位置
 
 - `Program.cs`：检测末尾配置，决定进入启动器还是播放模式。
-- `PlayerConfig.cs`：配置结构（含运行目录日志开关、内嵌 DLL）和追加/读取逻辑。
-- `PlayerRunner.cs`：释放/加载内嵌 DLL、调用五个导出函数、解析日志目录、写日志。
+- `PopupDefinition.cs`：单个弹窗的数据结构、复制和列表摘要。
+- `PopupEditorForm.cs`：添加/编辑弹窗的模态界面。
+- `MainForm.cs`：弹窗组列表、添加/编辑/删除、拖动排序、次数/无限循环和生成。
+- `PopupRowControl.cs`：自绘的弹窗组行（次数输入、无限循环、编辑/删除、拖拽柄）。
+- `RoundedTextBox.cs`：Win10/11 圆角输入框；Win7/8/8.1 自动退回原生 EDIT。
+- `UiTheme.cs`：判断当前系统是否使用旧版原生输入框样式。
+- `PlayerConfig.cs`：配置结构（含弹窗组、运行目录日志开关、内嵌 DLL）和追加/读取逻辑。
+- `PlayerRunner.cs`：释放/加载内嵌 DLL、按弹窗组顺序调用五个导出函数、写日志。
 - `Generator.cs`：复制启动器、读取 DLL、追加配置。
 - `app.manifest`：comctl32 v6 视觉样式和 DPI awareness 清单。
-- `DpiHelper.cs`：用 `GetDpiForWindow` 读取实际 DPI；无 config 时也能手动缩放。
-- `MainForm.cs`：下拉框、参数控件、运行目录日志复选框、文件夹选择、生成。
+- `DpiHelper.cs`：优先用 `GetDpiForWindow`，Win7 上回退 GDI `GetDeviceCaps`。
 - `PreviewPanel.cs`：GDI+ 绘制现代图标/按钮预览图。
