@@ -19,8 +19,9 @@ namespace ErrorReportLauncher
         private readonly float _scale;
         private readonly int _index;
         private bool _updating;
-        private Point _dragStart;
         private bool _dragging;
+        private bool _suppressCountValidation;
+        private Point _dragStart;
 
         public PopupDefinition Popup { get; }
 
@@ -65,6 +66,7 @@ namespace ErrorReportLauncher
             _dragHandle.AccessibleName = "拖动排序";
             _dragHandle.Paint += DragHandlePaint;
             _dragHandle.MouseDown += DragHandleMouseDown;
+            _dragHandle.MouseUp += DragHandleMouseUp;
             _dragHandle.MouseMove += DragHandleMouseMove;
             table.Controls.Add(_dragHandle, 0, 0);
 
@@ -86,6 +88,7 @@ namespace ErrorReportLauncher
             _countBox.Margin = new Padding(S(4), 0, S(4), 0);
             _countBox.ValueKeyPress += CountBoxKeyPress;
             _countBox.ValueLeave += (_, _) => ValidateCount();
+            _countBox.ValueTextChanged += CountBoxTextChanged;
             table.Controls.Add(_countBox, 3, 0);
 
             _infiniteCheck.Text = "无限循环";
@@ -196,22 +199,28 @@ namespace ErrorReportLauncher
             }
         }
 
-        private void ValidateCount()
+        private void CountBoxTextChanged(object? sender, EventArgs e)
         {
             if (Popup.Infinite)
+            {
+                return;
+            }
+            if (int.TryParse(_countBox.Value, out int count) && count >= 1)
+            {
+                Popup.RepeatCount = count;
+            }
+        }
+
+        private void ValidateCount()
+        {
+            if (Popup.Infinite || _suppressCountValidation)
             {
                 return;
             }
 
             if (!int.TryParse(_countBox.Value, out int count) || count < 1)
             {
-                MessageBox.Show(
-                    FindForm(),
-                    "弹出次数必须是正整数。",
-                    "ErrorReportMain",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
-                count = 1;
+                count = Math.Max(1, Popup.RepeatCount);
             }
 
             Popup.RepeatCount = count;
@@ -250,8 +259,18 @@ namespace ErrorReportLauncher
             {
                 return;
             }
+
+            // 拖拽开始时先提交输入框里的文字，避免随后的 Leave 事件读到中间状态。
+            ValidateCount();
+            _suppressCountValidation = true;
             _dragStart = e.Location;
             _dragging = true;
+        }
+
+        private void DragHandleMouseUp(object? sender, MouseEventArgs e)
+        {
+            _suppressCountValidation = false;
+            _dragging = false;
         }
 
         private void DragHandleMouseMove(object? sender, MouseEventArgs e)
@@ -266,7 +285,14 @@ namespace ErrorReportLauncher
             }
 
             _dragging = false;
-            DoDragDrop(_index, DragDropEffects.Move);
+            try
+            {
+                DoDragDrop(_index, DragDropEffects.Move);
+            }
+            finally
+            {
+                _suppressCountValidation = false;
+            }
         }
     }
 }

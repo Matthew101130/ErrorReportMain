@@ -93,6 +93,12 @@ namespace ErrorReportLauncher
             remove => _inner.Leave -= value;
         }
 
+        public event EventHandler? ValueTextChanged
+        {
+            add => _inner.TextChanged += value;
+            remove => _inner.TextChanged -= value;
+        }
+
         public void FocusInput()
         {
             _inner.Focus();
