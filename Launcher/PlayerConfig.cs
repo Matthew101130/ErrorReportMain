@@ -20,11 +20,13 @@ namespace ErrorReportLauncher
     /// </summary>
     public sealed class PlayerConfig : PopupDefinition
     {
-        private static readonly byte[] Magic = Encoding.ASCII.GetBytes("ERLPAY04");
+        private static readonly byte[] Magic = Encoding.ASCII.GetBytes("ERLPAY05");
+        private static readonly byte[] LegacyMagic4 = Encoding.ASCII.GetBytes("ERLPAY04");
         private static readonly byte[] LegacyMagic3 = Encoding.ASCII.GetBytes("ERLPAY03");
         private static readonly byte[] LegacyMagic2 = Encoding.ASCII.GetBytes("ERLPAY02");
         private static readonly byte[] LegacyMagic = Encoding.ASCII.GetBytes("ERLPAY01");
-        private const int FormatVersion = 4;
+        private const int FormatVersion = 5;
+        private const int LegacyFormatVersion4 = 4;
         private const int LegacyFormatVersion3 = 3;
         private const int LegacyFormatVersion2 = 2;
         private const int LegacyFormatVersion = 1;
@@ -114,6 +116,10 @@ namespace ErrorReportLauncher
                 {
                     formatVersion = FormatVersion;
                 }
+                else if (BytesEqual(magic, LegacyMagic4))
+                {
+                    formatVersion = LegacyFormatVersion4;
+                }
                 else if (BytesEqual(magic, LegacyMagic3))
                 {
                     formatVersion = LegacyFormatVersion3;
@@ -171,7 +177,7 @@ namespace ErrorReportLauncher
                     }
                     for (int i = 0; i < popupCount; i++)
                     {
-                        PopupDefinition? popup = ReadPopup(reader);
+                        PopupDefinition? popup = ReadPopup(reader, formatVersion >= 5);
                         if (popup is null)
                         {
                             return false;
@@ -214,9 +220,11 @@ namespace ErrorReportLauncher
             WritePopupFields(writer, popup);
             writer.Write(popup.RepeatCount < 1 ? 1 : popup.RepeatCount);
             writer.Write(popup.Infinite);
+            writer.Write(popup.OutputResult);
+            writer.Write(popup.OutputName ?? string.Empty);
         }
 
-        private static PopupDefinition? ReadPopup(BinaryReader reader)
+        private static PopupDefinition? ReadPopup(BinaryReader reader, bool includeOutput)
         {
             var popup = new PopupDefinition
             {
@@ -229,6 +237,11 @@ namespace ErrorReportLauncher
 
             int repeatCount = reader.ReadInt32();
             bool infinite = reader.ReadBoolean();
+            if (includeOutput)
+            {
+                popup.OutputResult = reader.ReadBoolean();
+                popup.OutputName = reader.ReadString();
+            }
             if (!infinite && repeatCount < 1)
             {
                 return null;

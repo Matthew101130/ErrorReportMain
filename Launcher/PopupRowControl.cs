@@ -10,9 +10,12 @@ namespace ErrorReportLauncher
         private readonly RoundedTextBox _countBox = new RoundedTextBox();
         private readonly CheckBox _infiniteCheck = new CheckBox();
         private readonly Panel _infiniteHost = new Panel();
+        private readonly CheckBox _outputCheck = new CheckBox();
+        private readonly Panel _outputHost = new Panel();
+        private readonly RoundedTextBox _outputName = new RoundedTextBox();
         private readonly Label _dragHandle = new Label();
         private readonly Label _indexLabel = new Label();
-        private readonly Label _summaryLabel = new Label();
+        private readonly TextBox _summaryLabel = new TextBox();
         private readonly Button _editButton = new Button();
         private readonly Button _deleteButton = new Button();
 
@@ -43,7 +46,7 @@ namespace ErrorReportLauncher
             var table = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                ColumnCount = 7,
+                ColumnCount = 9,
                 RowCount = 1,
                 Margin = new Padding(0),
                 Padding = new Padding(0),
@@ -52,10 +55,12 @@ namespace ErrorReportLauncher
             table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(40)));
             table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(50)));
             table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(90)));
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(86)));
             table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(95)));
-            table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(65)));
-            table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(72)));
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(70)));
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(96)));
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(56)));
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(64)));
             table.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
             _dragHandle.Text = string.Empty;
@@ -76,11 +81,19 @@ namespace ErrorReportLauncher
             _indexLabel.Margin = new Padding(0);
             table.Controls.Add(_indexLabel, 1, 0);
 
-            _summaryLabel.Text = popup.GetDisplayText();
-            _summaryLabel.TextAlign = ContentAlignment.MiddleLeft;
-            _summaryLabel.AutoEllipsis = true;
-            _summaryLabel.Dock = DockStyle.Fill;
+            _summaryLabel.Text = popup.GetShortDisplayText();
+            _summaryLabel.ReadOnly = true;
+            _summaryLabel.BorderStyle = BorderStyle.None;
+            _summaryLabel.BackColor = Color.White;
+            _summaryLabel.ForeColor = Color.Black;
+            _summaryLabel.TabStop = false;
+            _summaryLabel.WordWrap = false;
+            _summaryLabel.AutoSize = false;
+            _summaryLabel.Height = S(20);
+            _summaryLabel.Anchor = AnchorStyles.Left | AnchorStyles.Right;
             _summaryLabel.Margin = new Padding(S(6), 0, S(6), 0);
+            var summaryTip = new ToolTip();
+            summaryTip.SetToolTip(_summaryLabel, popup.GetDisplayText());
             table.Controls.Add(_summaryLabel, 2, 0);
 
             _countBox.Height = S(20);
@@ -104,25 +117,46 @@ namespace ErrorReportLauncher
             _infiniteHost.Layout += (_, _) => CenterInfiniteCheck();
             table.Controls.Add(_infiniteHost, 4, 0);
 
+            _outputCheck.Text = "输出结果";
+            _outputCheck.AutoSize = true;
+            _outputCheck.Margin = new Padding(0);
+            _outputCheck.CheckedChanged += OutputCheckChanged;
+            _outputCheck.SizeChanged += (_, _) => CenterOutputCheck();
+            _outputHost.Dock = DockStyle.Fill;
+            _outputHost.Margin = new Padding(0);
+            _outputHost.BackColor = Color.Transparent;
+            _outputHost.Controls.Add(_outputCheck);
+            _outputHost.Resize += (_, _) => CenterOutputCheck();
+            _outputHost.Layout += (_, _) => CenterOutputCheck();
+            table.Controls.Add(_outputHost, 5, 0);
+
+            _outputName.Height = S(20);
+            _outputName.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            _outputName.Margin = new Padding(S(4), 0, S(4), 0);
+            _outputName.TextAlignment = HorizontalAlignment.Left;
+            _outputName.ValueTextChanged += OutputNameTextChanged;
+            table.Controls.Add(_outputName, 6, 0);
+
             _editButton.Text = "编辑";
-            _editButton.Width = S(58);
+            _editButton.Width = S(50);
             _editButton.Height = S(24);
             _editButton.Anchor = AnchorStyles.None;
             _editButton.Margin = new Padding(0);
             _editButton.Click += (_, _) => EditRequested?.Invoke(this, EventArgs.Empty);
-            table.Controls.Add(_editButton, 5, 0);
+            table.Controls.Add(_editButton, 7, 0);
 
             _deleteButton.Text = "删除";
-            _deleteButton.Width = S(58);
+            _deleteButton.Width = S(50);
             _deleteButton.Height = S(24);
             _deleteButton.Anchor = AnchorStyles.None;
             _deleteButton.Margin = new Padding(0);
             _deleteButton.Click += (_, _) => DeleteRequested?.Invoke(this, EventArgs.Empty);
-            table.Controls.Add(_deleteButton, 6, 0);
+            table.Controls.Add(_deleteButton, 8, 0);
 
             Controls.Add(table);
             ApplyState();
             CenterInfiniteCheck();
+            CenterOutputCheck();
         }
 
         private void CenterInfiniteCheck()
@@ -137,10 +171,23 @@ namespace ErrorReportLauncher
                 Math.Max(0, (_infiniteHost.ClientSize.Height - _infiniteCheck.Height) / 2));
         }
 
+        private void CenterOutputCheck()
+        {
+            if (_outputHost.ClientSize.Width <= 0)
+            {
+                return;
+            }
+
+            _outputCheck.Location = new Point(
+                Math.Max(0, (_outputHost.ClientSize.Width - _outputCheck.Width) / 2),
+                Math.Max(0, (_outputHost.ClientSize.Height - _outputCheck.Height) / 2));
+        }
+
         protected override void OnLayout(LayoutEventArgs levent)
         {
             base.OnLayout(levent);
             CenterInfiniteCheck();
+            CenterOutputCheck();
         }
 
         private int S(float value)
@@ -158,11 +205,48 @@ namespace ErrorReportLauncher
         private void ApplyState()
         {
             _updating = true;
+            if (Popup.OutputResult && string.IsNullOrWhiteSpace(Popup.OutputName))
+            {
+                Popup.OutputName = "result" + (_index + 1);
+            }
             _infiniteCheck.Checked = Popup.Infinite;
             _countBox.Value = Popup.Infinite ? "∞" : Math.Max(1, Popup.RepeatCount).ToString();
             _countBox.ReadOnly = Popup.Infinite;
             _countBox.Muted = Popup.Infinite;
+            _outputCheck.Checked = Popup.OutputResult;
+            _outputName.Value = Popup.OutputName;
+            _outputName.Enabled = Popup.OutputResult;
+            _outputName.Muted = !Popup.OutputResult;
             _updating = false;
+        }
+
+        private void OutputCheckChanged(object? sender, EventArgs e)
+        {
+            if (_updating)
+            {
+                return;
+            }
+
+            Popup.OutputResult = _outputCheck.Checked;
+            _updating = true;
+            if (Popup.OutputResult && string.IsNullOrWhiteSpace(Popup.OutputName))
+            {
+                Popup.OutputName = "result" + (_index + 1);
+            }
+            _outputName.Value = Popup.OutputName;
+            _outputName.Enabled = Popup.OutputResult;
+            _outputName.Muted = !Popup.OutputResult;
+            _updating = false;
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void OutputNameTextChanged(object? sender, EventArgs e)
+        {
+            if (_updating)
+            {
+                return;
+            }
+            Popup.OutputName = _outputName.Value;
         }
 
         private void InfiniteCheckChanged(object? sender, EventArgs e)

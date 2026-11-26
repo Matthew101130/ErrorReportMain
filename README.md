@@ -360,6 +360,9 @@ system DPI awareness；启动器用 [Launcher/DpiHelper.cs](Launcher/DpiHelper.c
 
 ## 官方启动器
 
+> **【开发中】输出结果功能**
+> 该功能仍在开发中，**非必要不要使用**；当前只把点击结果写入日志和 `ErrorReportVectors.cpp`，`Return`/文件上传尚未接入。
+
 `Launcher/` 提供一个可选的 C# WinForms 启动器，不想自己写调用程序时可以用它生成
 “点开就弹错误框”的 exe。它支持：
 
@@ -367,12 +370,16 @@ system DPI awareness；启动器用 [Launcher/DpiHelper.cs](Launcher/DpiHelper.c
 - “添加弹窗”打开原来的弹窗编辑界面：五个接口、各自参数、实时预览、确定/取消；
 - 每行右侧有编辑和删除按钮；行可以拖动调整顺序；
 - 弹出次数支持正整数；勾选“无限循环”后次数显示为 `∞` 并变灰，取消后恢复为 `1`；
+- **【开发中】**每个弹窗可勾选“输出结果”并填写名称；弹窗 n 次循环结束后把点击结果写成
+  `std::vector<int>` 形式的日志，例如 `vec1 = { 1, 1, 2 }`（非必要不要使用）；
+- **【开发中】**全部播放结束后自动在 exe 所在目录生成 `ErrorReportVectors.cpp`，内容为
+  `#include <vector>` 和勾选名称的实际 `std::vector<int> 名称 = { ... };`；
 - 如果无限循环弹窗不是最后一个，生成时会报错，因为后面的弹窗永远不会执行；
 - 日志文件夹可直接输入，也可点右侧文件夹图标浏览选择；
 - 可勾选“日志生成在运行文件夹”，让生成 exe 把日志写在自身所在目录，忽略上面的日志文件夹；
 - 点击“生成 .exe”输出单文件播放器，x64 DLL 会一起写入 exe 末尾；生成物可以单独移动，不再需要旁边的 `ErrorReportMain.dll`。
 
-![弹窗组启动器](Launcher/launcher-group-rows-v9.png)
+![弹窗组启动器](Launcher/launcher-group-output.png)
 
 ![弹窗编辑界面](Launcher/launcher-custom.png)
 

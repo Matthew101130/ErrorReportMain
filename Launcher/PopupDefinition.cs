@@ -22,6 +22,12 @@ namespace ErrorReportLauncher
         public string Buttons { get; set; } = string.Empty;
         public int HideCloseButton { get; set; }
 
+        /// <summary>是否在弹窗 n 次循环结束后输出点击结果 vector。</summary>
+        public bool OutputResult { get; set; }
+
+        /// <summary>输出 vector 的 C++ 变量名。</summary>
+        public string OutputName { get; set; } = string.Empty;
+
         /// <summary>有限重复次数；必须为正整数。</summary>
         public int RepeatCount { get; set; } = 1;
 
@@ -46,6 +52,8 @@ namespace ErrorReportLauncher
                 Icon = Icon,
                 Buttons = Buttons,
                 HideCloseButton = HideCloseButton,
+                OutputResult = OutputResult,
+                OutputName = OutputName,
                 RepeatCount = RepeatCount,
                 Infinite = Infinite,
             };
@@ -57,6 +65,25 @@ namespace ErrorReportLauncher
             {
                 ReportFunction.DllMissing =>
                     $"DLL_MISSING_ERROR — {TextOr(ErrorProgram, "未知程序")} / {TextOr(MissingDll, "未知模块")}",
+                ReportFunction.ExeError =>
+                    $"EXE_ERROR — {TextOr(ErrorProgram, "未知程序")} / {TextOr(ErrorName, "未知异常")}",
+                ReportFunction.MemoryError =>
+                    $"MEMORY_ERROR — {TextOr(ErrorProgram, "未知程序")} / {TextOr(Operate, "0x00000000")}",
+                ReportFunction.Custom =>
+                    $"CUSTOM_ERROR — {TextOr(Title, "错误")}",
+                ReportFunction.CustomMessageBox =>
+                    $"CUSTOM_MESSAGEBOX — {TextOr(Title, "错误")}",
+                _ => Function.ToString(),
+            };
+        }
+
+        /// <summary>表格行内使用的较短摘要；完整参数放在 ToolTip/编辑器里。</summary>
+        public string GetShortDisplayText()
+        {
+            return Function switch
+            {
+                ReportFunction.DllMissing =>
+                    $"DLL_MISSING_ERROR — {TextOr(ErrorProgram, "未知程序")}",
                 ReportFunction.ExeError =>
                     $"EXE_ERROR — {TextOr(ErrorProgram, "未知程序")} / {TextOr(ErrorName, "未知异常")}",
                 ReportFunction.MemoryError =>

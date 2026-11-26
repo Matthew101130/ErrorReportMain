@@ -39,6 +39,9 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 
 ## 使用
 
+> **【开发中】输出结果功能**
+> 该功能仍在开发中，**非必要不要使用**；当前只输出 `std::vector<int>` 日志和 `ErrorReportVectors.cpp`，`Return`/文件上传尚未接入。
+
 1. 主界面是**弹窗组**列表，每一行表示一个弹窗。默认带一个 `DLL_MISSING_ERROR` 弹窗。
 2. 点击“＋ 添加弹窗”，会打开原来的弹窗编辑界面：
    - 选择五个接口之一：
@@ -50,7 +53,7 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
    - 中间是实时预览图；
    - 点“确定”后，这个弹窗加入弹窗组；点“取消”不修改。
 3. 每一行右侧有“编辑”和“删除”：
-   - 编辑会重新打开同一个编辑界面，并保留原来的弹出次数/无限循环设置；
+   - 编辑会重新打开同一个编辑界面，并保留原来的弹出次数/无限循环/输出结果设置；
    - 删除会先确认。
 4. “弹出次数”：
    - 未勾选“无限循环”时，必须输入正整数；
@@ -58,10 +61,24 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
    - 取消勾选后，次数自动恢复为 `1`。
 5. 行可以直接拖动调整顺序。若某个弹窗勾了无限循环，但它后面还有弹窗，生成时会报错，
    因为这些弹窗永远不会执行。
-6. 底部“日志文件夹”：
+6. **【开发中】**“输出结果”：
+   - 勾选后，右侧名称输入框启用；名称必须是唯一的 C++ 标识符；
+   - 弹窗完成 n 次循环后，日志追加
+     `Output Vector: std::vector<int> 名称 = { ... };`；
+   - 元素是该弹窗每次循环的 DLL 返回值（例如 `1`、`2`）；
+   - 无限循环弹窗不会结束，因此不能勾选输出结果；
+   - 全部播放结束后，在 exe 所在目录自动生成 `ErrorReportVectors.cpp`，内容为
+     `#include <vector>` 和各名称的实际定义，例如：
+     ```cpp
+     #include <vector>
+
+     std::vector<int> vec1 = { 1, 1 };
+     ```
+   - **非必要不要使用；当前只写 vector 日志/文件，Return/文件上传尚未接入。**
+7. 底部“日志文件夹”：
    - 直接输入路径，或点右侧文件夹图标选择；
    - 勾选“日志生成在运行文件夹”后，输入框和浏览按钮禁用，生成 exe 会把日志写在自身所在目录。
-7. 点击“生成 .exe”，选择保存位置。
+8. 点击“生成 .exe”，选择保存位置。
 
 自定义模式的按钮勾选框目前固定提供：
 
@@ -84,7 +101,7 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 
 弹窗组管理：
 
-![弹窗组管理](launcher-group-rows-v9.png)
+![弹窗组管理](launcher-group-output.png)
 
 添加/编辑弹窗：
 
@@ -137,7 +154,21 @@ ErrorProgram: Second.exe
 MissingDll: VCRUNTIME140.dll
 Repeat: 1/2
 User Choice: 1
+
+Output Vector: std::vector<int> vec2 = { 1, 1 };
 ```
+
+`Output Vector` 只在该弹窗勾选“输出结果”时出现，内容是该弹窗 n 次循环的点击结果。  
+全部播放结束后，会在 exe 所在目录生成 `ErrorReportVectors.cpp`，并把该文件路径追加为
+`Vector File: ...`；文件内容示例：
+
+```cpp
+#include <vector>
+
+std::vector<int> vec1 = { 1, 1 };
+```
+
+**【开发中】非必要不要使用；当前仅写日志和 `.cpp` 文件，`Return`/文件上传尚未接入。**
 
 `User Choice` 是 DLL 的返回值：
 
@@ -146,7 +177,7 @@ User Choice: 1
 - `CUSTOM_MESSAGEBOX`：标准 MessageBox 按钮 ID，例如 `IDYES` = 6、`IDNO` = 7、`IDCANCEL` = 2；
 - `MessageBoxW` 自身失败时可能是 0。
 
-配置格式为 `ERLPAY04`，兼容 `ERLPAY01` / `ERLPAY02` / `ERLPAY03`；旧版生成 exe 仍可运行。
+配置格式为 `ERLPAY05`，兼容 `ERLPAY01` / `ERLPAY02` / `ERLPAY03` / `ERLPAY04`；旧版生成 exe 仍可运行。
 
 ## 生成物说明
 
@@ -175,6 +206,8 @@ User Choice: 1
   此时请取消勾选并指定可写目录。
 - 不勾选运行目录时，日志文件夹是绝对路径，生成后换机器运行可能失效。
 - 生成 exe 里仍包含启动器代码（用于预览和生成），但检测到末尾配置后只执行播放逻辑。
+- 上传 C++ `Return` 源码、编译/调用它以及把返回的 `i64` 写回日志，当前版本暂未接入；
+  目前只记录并输出各弹窗的 `std::vector<int>` 结果。
 
 ## Windows 7 说明
 
@@ -189,14 +222,14 @@ User Choice: 1
 ## 实现位置
 
 - `Program.cs`：检测末尾配置，决定进入启动器还是播放模式。
-- `PopupDefinition.cs`：单个弹窗的数据结构、复制和列表摘要。
+- `PopupDefinition.cs`：单个弹窗的数据结构、复制、列表摘要和输出 vector 名称。
 - `PopupEditorForm.cs`：添加/编辑弹窗的模态界面。
-- `MainForm.cs`：弹窗组列表、添加/编辑/删除、拖动排序、次数/无限循环和生成。
-- `PopupRowControl.cs`：自绘的弹窗组行（次数输入、无限循环、编辑/删除、拖拽柄）。
+- `MainForm.cs`：弹窗组列表、添加/编辑/删除、拖动排序、次数/无限循环、输出结果和生成。
+- `PopupRowControl.cs`：自绘的弹窗组行（次数输入、无限循环、输出结果/名称、编辑/删除、拖拽柄）。
 - `RoundedTextBox.cs`：Win10/11 圆角输入框；Win7/8/8.1 自动退回原生 EDIT。
 - `UiTheme.cs`：判断当前系统是否使用旧版原生输入框样式。
-- `PlayerConfig.cs`：配置结构（含弹窗组、运行目录日志开关、内嵌 DLL）和追加/读取逻辑。
-- `PlayerRunner.cs`：释放/加载内嵌 DLL、按弹窗组顺序调用五个导出函数、写日志。
+- `PlayerConfig.cs`：配置结构（含弹窗组、输出结果、运行目录日志开关、内嵌 DLL）和追加/读取逻辑。
+- `PlayerRunner.cs`：释放/加载内嵌 DLL、按弹窗组顺序调用五个导出函数、写点击结果 vector 日志和 `ErrorReportVectors.cpp`。
 - `Generator.cs`：复制启动器、读取 DLL、追加配置。
 - `app.manifest`：comctl32 v6 视觉样式和 DPI awareness 清单。
 - `DpiHelper.cs`：优先用 `GetDpiForWindow`，Win7 上回退 GDI `GetDeviceCaps`。

@@ -216,7 +216,7 @@ namespace ErrorReportLauncher
         {
             _header.Dock = DockStyle.Top;
             _header.Height = S(30);
-            _header.ColumnCount = 7;
+            _header.ColumnCount = 9;
             _header.RowCount = 1;
             _header.Margin = new Padding(0);
             _header.BackColor = Color.FromArgb(242, 244, 247);
@@ -225,10 +225,12 @@ namespace ErrorReportLauncher
             _header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(40)));
             _header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(50)));
             _header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            _header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(90)));
+            _header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(86)));
             _header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(95)));
-            _header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(65)));
-            _header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(72)));
+            _header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(70)));
+            _header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(96)));
+            _header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(56)));
+            _header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, S(64)));
             _header.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
             AddHeaderLabel(string.Empty, 0, 1);
@@ -236,7 +238,9 @@ namespace ErrorReportLauncher
             AddHeaderLabel("弹窗", 2, 1);
             AddHeaderLabel("弹出次数", 3, 1);
             AddHeaderLabel("无限循环", 4, 1);
-            AddHeaderLabel("操作", 5, 2);
+            AddHeaderLabel("输出结果", 5, 1);
+            AddHeaderLabel("名称", 6, 1);
+            AddHeaderLabel("操作", 7, 2);
         }
 
         private void AddHeaderLabel(string text, int column, int span)
@@ -358,6 +362,8 @@ namespace ErrorReportLauncher
                 PopupDefinition popup = editor.Result;
                 popup.RepeatCount = old.RepeatCount;
                 popup.Infinite = old.Infinite;
+                popup.OutputResult = old.OutputResult;
+                popup.OutputName = old.OutputName;
                 _popups[index] = popup;
                 RefreshList();
             }
@@ -455,6 +461,56 @@ namespace ErrorReportLauncher
             }
         }
 
+        private List<string>? GetValidatedOutputNames()
+        {
+            var names = new List<string>();
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < _popups.Count; i++)
+            {
+                PopupDefinition popup = _popups[i];
+                if (!popup.OutputResult)
+                {
+                    continue;
+                }
+                if (popup.Infinite)
+                {
+                    MessageBox.Show(
+                        this,
+                        $"第 {i + 1} 个弹窗是无限循环，永远不会结束，不能输出结果。",
+                        "ErrorReportMain",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    return null;
+                }
+
+                string outputName = popup.OutputName.Trim();
+                if (!IsValidCppIdentifier(outputName))
+                {
+                    MessageBox.Show(
+                        this,
+                        $"第 {i + 1} 个弹窗的输出名称无效：\"{outputName}\"。\n"
+                        + "请使用 C++ 标识符（字母/下划线开头，只含字母、数字、下划线）。",
+                        "ErrorReportMain",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    return null;
+                }
+                if (!seen.Add(outputName))
+                {
+                    MessageBox.Show(
+                        this,
+                        $"输出名称重复：\"{outputName}\"。",
+                        "ErrorReportMain",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    return null;
+                }
+                popup.OutputName = outputName;
+                names.Add(outputName);
+            }
+            return names;
+        }
+
         private void GenerateExecutable()
         {
             if (_popups.Count == 0)
@@ -489,6 +545,12 @@ namespace ErrorReportLauncher
                         MessageBoxIcon.Warning);
                     return;
                 }
+            }
+
+            List<string>? outputNames = GetValidatedOutputNames();
+            if (outputNames is null)
+            {
+                return;
             }
 
             string logFolder = _logFolder.Value.Trim();
@@ -618,6 +680,123 @@ namespace ErrorReportLauncher
             }
         }
 
+        private static bool IsValidCppIdentifier(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+            {
+                return false;
+            }
+            char first = name[0];
+            if (!(first == '_' || (first >= 'A' && first <= 'Z') || (first >= 'a' && first <= 'z')))
+            {
+                return false;
+            }
+            for (int i = 1; i < name.Length; i++)
+            {
+                char c = name[i];
+                if (!(c == '_' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')))
+                {
+                    return false;
+                }
+            }
+
+            switch (name)
+            {
+                case "alignas":
+                case "alignof":
+                case "and":
+                case "and_eq":
+                case "asm":
+                case "auto":
+                case "bitand":
+                case "bitor":
+                case "bool":
+                case "break":
+                case "case":
+                case "catch":
+                case "char":
+                case "class":
+                case "compl":
+                case "concept":
+                case "const":
+                case "consteval":
+                case "constexpr":
+                case "constinit":
+                case "const_cast":
+                case "continue":
+                case "co_await":
+                case "co_return":
+                case "co_yield":
+                case "decltype":
+                case "default":
+                case "delete":
+                case "do":
+                case "double":
+                case "dynamic_cast":
+                case "else":
+                case "enum":
+                case "explicit":
+                case "export":
+                case "extern":
+                case "false":
+                case "float":
+                case "for":
+                case "friend":
+                case "goto":
+                case "if":
+                case "inline":
+                case "int":
+                case "long":
+                case "mutable":
+                case "namespace":
+                case "new":
+                case "noexcept":
+                case "not":
+                case "not_eq":
+                case "nullptr":
+                case "operator":
+                case "or":
+                case "or_eq":
+                case "private":
+                case "protected":
+                case "public":
+                case "register":
+                case "reinterpret_cast":
+                case "requires":
+                case "return":
+                case "short":
+                case "signed":
+                case "sizeof":
+                case "static":
+                case "static_assert":
+                case "static_cast":
+                case "struct":
+                case "switch":
+                case "template":
+                case "this":
+                case "thread_local":
+                case "throw":
+                case "true":
+                case "try":
+                case "typedef":
+                case "typeid":
+                case "typename":
+                case "union":
+                case "unsigned":
+                case "using":
+                case "virtual":
+                case "void":
+                case "volatile":
+                case "wchar_t":
+                case "while":
+                case "xor":
+                case "xor_eq":
+                    return false;
+                default:
+                    return true;
+            }
+        }
+
         private static string? FindDllPath()
         {
             string baseDirectory = AppContext.BaseDirectory;
@@ -744,10 +923,12 @@ namespace ErrorReportLauncher
             _header.Height = S(30);
             _header.ColumnStyles[0].Width = S(40);
             _header.ColumnStyles[1].Width = S(50);
-            _header.ColumnStyles[3].Width = S(90);
+            _header.ColumnStyles[3].Width = S(86);
             _header.ColumnStyles[4].Width = S(95);
-            _header.ColumnStyles[5].Width = S(65);
-            _header.ColumnStyles[6].Width = S(72);
+            _header.ColumnStyles[5].Width = S(70);
+            _header.ColumnStyles[6].Width = S(96);
+            _header.ColumnStyles[7].Width = S(56);
+            _header.ColumnStyles[8].Width = S(64);
         }
 
         protected override void Dispose(bool disposing)

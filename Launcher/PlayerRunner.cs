@@ -78,11 +78,13 @@ namespace ErrorReportLauncher
 
                 string logPath = CreateLogPath(logFolder);
                 WriteLogHeader(logPath, popups.Count);
+                var outputVectors = new List<KeyValuePair<string, List<int>>>();
 
                 for (int popupIndex = 0; popupIndex < popups.Count; popupIndex++)
                 {
                     PopupDefinition popup = popups[popupIndex];
                     int iteration = 0;
+                    var outputValues = new List<int>();
                     while (popup.Infinite || iteration < Math.Max(1, popup.RepeatCount))
                     {
                         iteration++;
@@ -109,8 +111,19 @@ namespace ErrorReportLauncher
                                 MessageBoxIcon.Error);
                             return;
                         }
+
+                        outputValues.Add(result);
+                    }
+
+                    if (popup.OutputResult)
+                    {
+                        AppendOutputVector(logPath, popup.OutputName, outputValues);
+                        outputVectors.Add(
+                            new KeyValuePair<string, List<int>>(popup.OutputName, outputValues));
                     }
                 }
+
+                WriteVectorFile(logPath, outputVectors);
             }
             catch (Exception ex)
             {
@@ -158,6 +171,15 @@ namespace ErrorReportLauncher
                 {
                     throw new InvalidOperationException(
                         "无限循环弹窗必须是最后一个；它后面的弹窗永远不会执行。");
+                }
+                if (popup.OutputResult && popup.Infinite)
+                {
+                    throw new InvalidOperationException(
+                        "无限循环弹窗不会结束，不能输出结果。");
+                }
+                if (popup.OutputResult && string.IsNullOrWhiteSpace(popup.OutputName))
+                {
+                    throw new InvalidOperationException("输出 vector 名称不能为空。");
                 }
             }
         }
@@ -350,6 +372,58 @@ namespace ErrorReportLauncher
             }
 
             File.AppendAllText(path, builder.ToString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        }
+
+        private static void AppendOutputVector(string path, string name, IReadOnlyList<int> values)
+        {
+            var builder = new StringBuilder();
+            builder.AppendLine();
+            builder.AppendLine(
+                $"Output Vector: std::vector<int> {name} = {{ {string.Join(", ", values)} }};");
+            File.AppendAllText(
+                path,
+                builder.ToString(),
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        }
+
+        private static void WriteVectorFile(
+            string logPath,
+            IReadOnlyList<KeyValuePair<string, List<int>>> vectors)
+        {
+            if (vectors.Count == 0)
+            {
+                return;
+            }
+
+            string path = Path.Combine(AppContext.BaseDirectory, "ErrorReportVectors.cpp");
+            var builder = new StringBuilder();
+            builder.AppendLine("#include <vector>");
+            builder.AppendLine();
+            foreach (KeyValuePair<string, List<int>> vector in vectors)
+            {
+                builder.AppendLine(
+                    $"std::vector<int> {vector.Key} = {{ {string.Join(", ", vector.Value)} }};");
+            }
+
+            try
+            {
+                File.WriteAllText(
+                    path,
+                    builder.ToString(),
+                    new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+                File.AppendAllText(
+                    logPath,
+                    $"Vector File: {path}{Environment.NewLine}",
+                    new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    "无法生成 vector 文件：\n" + ex.Message,
+                    "ErrorReportMain",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
         }
 
         private static string GetFunctionName(ReportFunction function)
