@@ -139,15 +139,15 @@ namespace ErrorReportLauncher
         {
             return popup.Function switch
             {
-                ReportFunction.DllMissing => GetFunction<DllMissingErrorFn>("DLL_MISSING_ERROR")(
+                ReportFunction.DllMissing => GetFunction<DllMissingErrorFn>("DllMissingError")(
                     popup.ErrorProgram, popup.MissingDll),
-                ReportFunction.ExeError => GetFunction<ExeErrorFn>("EXE_ERROR")(
+                ReportFunction.ExeError => GetFunction<ExeErrorFn>("ExeError")(
                     popup.ErrorProgram, popup.ErrorName, popup.ErrorCode, popup.Address),
-                ReportFunction.MemoryError => GetFunction<MemoryErrorFn>("MEMORY_ERROR")(
+                ReportFunction.MemoryError => GetFunction<MemoryErrorFn>("MemoryError")(
                     popup.ErrorProgram, popup.Operate, popup.MemoryAddress, popup.CannotBe),
-                ReportFunction.Custom => GetFunction<CustomErrorFn>("CUSTOM_ERROR")(
+                ReportFunction.Custom => GetFunction<CustomErrorFn>("CustomError")(
                     popup.Title, popup.Text, popup.Icon, popup.Buttons, popup.HideCloseButton),
-                ReportFunction.CustomMessageBox => GetFunction<CustomMessageBoxFn>("CUSTOM_MESSAGEBOX")(
+                ReportFunction.CustomMessageBox => GetFunction<CustomMessageBoxFn>("CustomMessageBox")(
                     popup.Title, popup.Text, popup.Icon, popup.Buttons),
                 _ => -2,
             };
@@ -430,11 +430,11 @@ namespace ErrorReportLauncher
         {
             return function switch
             {
-                ReportFunction.DllMissing => "DLL_MISSING_ERROR",
-                ReportFunction.ExeError => "EXE_ERROR",
-                ReportFunction.MemoryError => "MEMORY_ERROR",
-                ReportFunction.Custom => "CUSTOM_ERROR",
-                ReportFunction.CustomMessageBox => "CUSTOM_MESSAGEBOX",
+                ReportFunction.DllMissing => "DllMissingError",
+                ReportFunction.ExeError => "ExeError",
+                ReportFunction.MemoryError => "MemoryError",
+                ReportFunction.Custom => "CustomError",
+                ReportFunction.CustomMessageBox => "CustomMessageBox",
                 _ => function.ToString(),
             };
         }

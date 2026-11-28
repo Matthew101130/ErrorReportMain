@@ -4,7 +4,7 @@
 
 #include "ErrorReport/Detail/MessageBoxError.h"
 
-int DLL_MISSING_ERROR(const wchar_t* ErrorProgram, const wchar_t* MissingDll) {
+int DllMissingError(const wchar_t* ErrorProgram, const wchar_t* MissingDll) {
     using errorreport::detail::ShowErrorBox;
     using errorreport::detail::ShowFallbackErrorBox;
     using errorreport::detail::ToWString;

@@ -4,7 +4,7 @@
 
 #include "ErrorReport/Detail/MessageBoxError.h"
 
-int MEMORY_ERROR(const wchar_t* ErrorProgram, const wchar_t* Operate, const wchar_t* Address, const wchar_t* CannotBe) {
+int MemoryError(const wchar_t* ErrorProgram, const wchar_t* Operate, const wchar_t* Address, const wchar_t* CannotBe) {
     using errorreport::detail::ShowErrorBox;
     using errorreport::detail::ShowFallbackErrorBox;
     using errorreport::detail::ToWString;

@@ -42,14 +42,14 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 > **【开发中】输出结果功能**
 > 该功能仍在开发中，**非必要不要使用**；当前只输出 `std::vector<int>` 日志和 `ErrorReportVectors.cpp`，`Return`/文件上传尚未接入。
 
-1. 主界面是**弹窗组**列表，每一行表示一个弹窗。默认带一个 `DLL_MISSING_ERROR` 弹窗。
+1. 主界面是**弹窗组**列表，每一行表示一个弹窗。默认带一个 `DllMissingError` 弹窗。
 2. 点击“＋ 添加弹窗”，会打开原来的弹窗编辑界面：
    - 选择五个接口之一：
-     - `DLL_MISSING_ERROR`：程序名、缺失模块；
-     - `EXE_ERROR`：程序名、异常名、错误代码、地址；
-     - `MEMORY_ERROR`：程序名、指令地址、被引用地址、访问类型；
-     - `CUSTOM_ERROR`：标题、正文、图标、按钮勾选框、隐藏关闭按钮；
-     - `CUSTOM_MESSAGEBOX`：标题、正文、图标、标准按钮组合，可勾选“显示帮助按钮”；
+     - `DllMissingError`：程序名、缺失模块；
+     - `ExeError`：程序名、异常名、错误代码、地址；
+     - `MemoryError`：程序名、指令地址、被引用地址、访问类型；
+     - `CustomError`：标题、正文、图标、按钮勾选框、隐藏关闭按钮；
+     - `CustomMessageBox`：标题、正文、图标、标准按钮组合，可勾选“显示帮助按钮”；
    - 中间是实时预览图；
    - 点“确定”后，这个弹窗加入弹窗组；点“取消”不修改。
 3. 每一行右侧有“编辑”和“删除”：
@@ -86,7 +86,7 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 确定 / 取消 / 是 / 否 / 重试 / 忽略 / 中止 / 继续
 ```
 
-`CUSTOM_MESSAGEBOX` 的标准按钮组合：
+`CustomMessageBox` 的标准按钮组合：
 
 ```text
 确定 / 确定|取消 / 是|否 / 是|否|取消 / 重试|取消 / 中止|重试|忽略 / 取消|重试|继续
@@ -95,7 +95,7 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 可勾选“显示帮助按钮”，在下拉框选项后追加 `|help`；生成 exe 时会自动转回
 `ok` / `okcancel` 等标准按钮键传给 DLL。
 
-`CUSTOM_ERROR` 的按钮全部不勾选时，DLL 会使用默认的“确定”。
+`CustomError` 的按钮全部不勾选时，DLL 会使用默认的“确定”。
 
 ### 界面预览
 
@@ -123,7 +123,7 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 - 每个弹窗关闭后写入同一个 `.log`：勾选“日志生成在运行文件夹”时写在 exe 旁边，
   否则写到指定日志文件夹。
 
-实际效果（`DLL_MISSING_ERROR`，175% DPI，已带 comctl32 v6 清单）：
+实际效果（`DllMissingError`，175% DPI，已带 comctl32 v6 清单）：
 
 ![生成 exe 的实际弹窗](generated-popup.png)
 
@@ -142,14 +142,14 @@ Local Time: 2026-11-14 18:47:45
 Popup Count: 2
 
 --- Popup 1/2 ---
-Function: DLL_MISSING_ERROR
+Function: DllMissingError
 ErrorProgram: Demo.exe
 MissingDll: MSVCP140.dll
 Repeat: 1/1
 User Choice: 1
 
 --- Popup 2/2 ---
-Function: DLL_MISSING_ERROR
+Function: DllMissingError
 ErrorProgram: Second.exe
 MissingDll: VCRUNTIME140.dll
 Repeat: 1/2
@@ -173,8 +173,8 @@ std::vector<int> vec1 = { 1, 1 };
 `User Choice` 是 DLL 的返回值：
 
 - 前三个接口：`IDOK` = 1，`IDCANCEL` = 2；
-- `CUSTOM_ERROR`：0 基按钮索引，`-1` 关闭，`-2` 失败；
-- `CUSTOM_MESSAGEBOX`：标准 MessageBox 按钮 ID，例如 `IDYES` = 6、`IDNO` = 7、`IDCANCEL` = 2；
+- `CustomError`：0 基按钮索引，`-1` 关闭，`-2` 失败；
+- `CustomMessageBox`：标准 MessageBox 按钮 ID，例如 `IDYES` = 6、`IDNO` = 7、`IDCANCEL` = 2；
 - `MessageBoxW` 自身失败时可能是 0。
 
 配置格式为 `ERLPAY05`，兼容 `ERLPAY01` / `ERLPAY02` / `ERLPAY03` / `ERLPAY04`；旧版生成 exe 仍可运行。
@@ -198,7 +198,7 @@ std::vector<int> vec1 = { 1, 1 };
 - 启动器和生成 exe 当前都是 x64；`ErrorReportMain-x86.dll` 只能给 32 位原生宿主使用。
 - 生成 exe 依赖 .NET Framework 4.8；不是完全原生的单文件 exe。
 - 图标只支持 `none` / `error` / `warning` / `info` / `question` 这些系统图标。
-- 自定义按钮最多 8 个，排成一行；`CUSTOM_MESSAGEBOX` 只能使用标准按钮组合和系统语言文本。
+- 自定义按钮最多 8 个，排成一行；`CustomMessageBox` 只能使用标准按钮组合和系统语言文本。
 - 一个弹窗组最多 1000 个弹窗。
 - 无限循环弹窗必须是最后一个；它后面的弹窗不会执行，生成时会报错。
 - 无限循环会持续写日志，文件会不断增长；需要停止时只能结束播放器进程。

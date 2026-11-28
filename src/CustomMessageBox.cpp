@@ -95,7 +95,7 @@ bool ParseButtons(const std::wstring& spec, unsigned int& flags) noexcept {
 
 } // namespace
 
-int CUSTOM_MESSAGEBOX(const wchar_t* Title,
+int CustomMessageBox(const wchar_t* Title,
                       const wchar_t* Text,
                       const wchar_t* Icon,
                       const wchar_t* Buttons) {

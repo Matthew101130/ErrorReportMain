@@ -114,7 +114,7 @@ LPCWSTR IconResource(IconKind kind) noexcept {
 }
 
 // MessageBox 在弹出时会按图标播放对应的系统提示音（内部等价于
-// MessageBeep(uType & MB_ICONMASK)）。CUSTOM_ERROR 自己绘制窗口，不会经过
+// MessageBeep(uType & MB_ICONMASK)）。CustomError 自己绘制窗口，不会经过
 // MessageBox，这里补上同样的映射，让两者的声音表现一致。
 UINT MessageBeepType(IconKind kind) noexcept {
     switch (kind) {
@@ -618,7 +618,7 @@ INT_PTR CALLBACK CustomErrorDialogProc(HWND hDlg, UINT message, WPARAM wParam, L
 
 } // namespace
 
-int CUSTOM_ERROR(const wchar_t* Title,
+int CustomError(const wchar_t* Title,
                  const wchar_t* Text,
                  const wchar_t* Icon,
                  const wchar_t* Buttons,

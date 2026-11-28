@@ -4,7 +4,7 @@
 
 #include "ErrorReport/Detail/MessageBoxError.h"
 
-int EXE_ERROR(const wchar_t* ErrorProgram, const wchar_t* ErrorName, const wchar_t* ErrorCode, const wchar_t* Address) {
+int ExeError(const wchar_t* ErrorProgram, const wchar_t* ErrorName, const wchar_t* ErrorCode, const wchar_t* Address) {
     using errorreport::detail::ShowErrorBox;
     using errorreport::detail::ShowFallbackErrorBox;
     using errorreport::detail::ToWString;
