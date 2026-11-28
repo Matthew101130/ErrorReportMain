@@ -73,11 +73,11 @@ namespace ErrorReportLauncher
 
         private void CreateControls()
         {
-            _functions.Add(new FunctionOption(ReportFunction.DllMissing, "DLL_MISSING_ERROR — 缺少 DLL"));
-            _functions.Add(new FunctionOption(ReportFunction.ExeError, "EXE_ERROR — 应用程序异常"));
-            _functions.Add(new FunctionOption(ReportFunction.MemoryError, "MEMORY_ERROR — 内存错误"));
-            _functions.Add(new FunctionOption(ReportFunction.Custom, "CUSTOM_ERROR — 自定义窗口"));
-            _functions.Add(new FunctionOption(ReportFunction.CustomMessageBox, "CUSTOM_MESSAGEBOX — 标准消息框"));
+            _functions.Add(new FunctionOption(ReportFunction.DllMissing, "DllMissingError — 缺少 DLL"));
+            _functions.Add(new FunctionOption(ReportFunction.ExeError, "ExeError — 应用程序异常"));
+            _functions.Add(new FunctionOption(ReportFunction.MemoryError, "MemoryError — 内存错误"));
+            _functions.Add(new FunctionOption(ReportFunction.Custom, "CustomError — 自定义窗口"));
+            _functions.Add(new FunctionOption(ReportFunction.CustomMessageBox, "CustomMessageBox — 标准消息框"));
             foreach (FunctionOption option in _functions)
             {
                 _functionCombo.Items.Add(option);

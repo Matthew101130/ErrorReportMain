@@ -1,14 +1,23 @@
 ; ErrorReportMain 的模块定义文件。
 ;
 ; 使用 .def 明确固定导出名，避免 x86 下 __cdecl 的 C 修饰名（前导下划线）
-; 直接进入导出表。这里列出的五个名字在 x86 和 x64 下完全一致，可供
+; 直接进入导出表。这里列出的名字在 x86 和 x64 下完全一致，可供
 ; GetProcAddress / P/Invoke 直接使用。
+;
+; 函数实现已改用大驼峰命名（DllMissingError 等）；为兼容仍按旧名查找导出的
+; 调用方，下面把旧的 SCREAMING_SNAKE_CASE 名字作为别名一并导出（别名=内部名）。
 ; 如果修改工程的 TargetName，请同步修改下面的 LIBRARY 名称。
 LIBRARY ErrorReportMain
 
 EXPORTS
-    DLL_MISSING_ERROR
-    EXE_ERROR
-    MEMORY_ERROR
-    CUSTOM_ERROR
-    CUSTOM_MESSAGEBOX
+    DllMissingError
+    ExeError
+    MemoryError
+    CustomError
+    CustomMessageBox
+
+    DLL_MISSING_ERROR=DllMissingError
+    EXE_ERROR=ExeError
+    MEMORY_ERROR=MemoryError
+    CUSTOM_ERROR=CustomError
+    CUSTOM_MESSAGEBOX=CustomMessageBox

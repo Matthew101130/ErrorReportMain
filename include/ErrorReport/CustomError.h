@@ -2,6 +2,12 @@
 
 #include "ErrorReport/Export.h"
 
+// 旧名兼容：接口已更名为 CustomError，旧名 CUSTOM_ERROR 通过宏映射到新名，
+// 引用旧名的源代码无需修改即可继续编译。
+#ifndef CUSTOM_ERROR
+#  define CUSTOM_ERROR CustomError
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -33,7 +39,7 @@ extern "C" {
 //     error -> 关键停止音，warning -> 感叹音，info -> 星号音，
 //     question -> 问题音，无图标 -> Windows 默认蜂鸣。
 //     具体音色由系统声音方案决定，系统静音时不会发声。
-ERRORREPORT_API int CUSTOM_ERROR(const wchar_t* Title,
+ERRORREPORT_API int CustomError(const wchar_t* Title,
                                  const wchar_t* Text,
                                  const wchar_t* Icon,
                                  const wchar_t* Buttons,

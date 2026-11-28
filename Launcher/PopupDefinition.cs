@@ -64,15 +64,15 @@ namespace ErrorReportLauncher
             return Function switch
             {
                 ReportFunction.DllMissing =>
-                    $"DLL_MISSING_ERROR — {TextOr(ErrorProgram, "未知程序")} / {TextOr(MissingDll, "未知模块")}",
+                    $"DllMissingError — {TextOr(ErrorProgram, "未知程序")} / {TextOr(MissingDll, "未知模块")}",
                 ReportFunction.ExeError =>
-                    $"EXE_ERROR — {TextOr(ErrorProgram, "未知程序")} / {TextOr(ErrorName, "未知异常")}",
+                    $"ExeError — {TextOr(ErrorProgram, "未知程序")} / {TextOr(ErrorName, "未知异常")}",
                 ReportFunction.MemoryError =>
-                    $"MEMORY_ERROR — {TextOr(ErrorProgram, "未知程序")} / {TextOr(Operate, "0x00000000")}",
+                    $"MemoryError — {TextOr(ErrorProgram, "未知程序")} / {TextOr(Operate, "0x00000000")}",
                 ReportFunction.Custom =>
-                    $"CUSTOM_ERROR — {TextOr(Title, "错误")}",
+                    $"CustomError — {TextOr(Title, "错误")}",
                 ReportFunction.CustomMessageBox =>
-                    $"CUSTOM_MESSAGEBOX — {TextOr(Title, "错误")}",
+                    $"CustomMessageBox — {TextOr(Title, "错误")}",
                 _ => Function.ToString(),
             };
         }
@@ -83,15 +83,15 @@ namespace ErrorReportLauncher
             return Function switch
             {
                 ReportFunction.DllMissing =>
-                    $"DLL_MISSING_ERROR — {TextOr(ErrorProgram, "未知程序")}",
+                    $"DllMissingError — {TextOr(ErrorProgram, "未知程序")}",
                 ReportFunction.ExeError =>
-                    $"EXE_ERROR — {TextOr(ErrorProgram, "未知程序")} / {TextOr(ErrorName, "未知异常")}",
+                    $"ExeError — {TextOr(ErrorProgram, "未知程序")} / {TextOr(ErrorName, "未知异常")}",
                 ReportFunction.MemoryError =>
-                    $"MEMORY_ERROR — {TextOr(ErrorProgram, "未知程序")} / {TextOr(Operate, "0x00000000")}",
+                    $"MemoryError — {TextOr(ErrorProgram, "未知程序")} / {TextOr(Operate, "0x00000000")}",
                 ReportFunction.Custom =>
-                    $"CUSTOM_ERROR — {TextOr(Title, "错误")}",
+                    $"CustomError — {TextOr(Title, "错误")}",
                 ReportFunction.CustomMessageBox =>
-                    $"CUSTOM_MESSAGEBOX — {TextOr(Title, "错误")}",
+                    $"CustomMessageBox — {TextOr(Title, "错误")}",
                 _ => Function.ToString(),
             };
         }

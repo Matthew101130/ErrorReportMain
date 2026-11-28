@@ -2,6 +2,12 @@
 
 #include "ErrorReport/Export.h"
 
+// 旧名兼容：接口已更名为 ExeError，旧名 EXE_ERROR 通过宏映射到新名，
+// 引用旧名的源代码无需修改即可继续编译。
+#ifndef EXE_ERROR
+#  define EXE_ERROR ExeError
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -12,7 +18,7 @@ extern "C" {
 //   ErrorCode    : 异常代码/描述。
 //   Address      : 出错地址。
 // 返回 MessageBoxW 的返回值（IDOK 或 IDCANCEL）。
-ERRORREPORT_API int EXE_ERROR(const wchar_t* ErrorProgram, const wchar_t* ErrorName, const wchar_t* ErrorCode, const wchar_t* Address);
+ERRORREPORT_API int ExeError(const wchar_t* ErrorProgram, const wchar_t* ErrorName, const wchar_t* ErrorCode, const wchar_t* Address);
 
 #ifdef __cplusplus
 }

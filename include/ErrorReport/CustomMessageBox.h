@@ -2,6 +2,12 @@
 
 #include "ErrorReport/Export.h"
 
+// 旧名兼容：接口已更名为 CustomMessageBox，旧名 CUSTOM_MESSAGEBOX 通过宏映射到新名，
+// 引用旧名的源代码无需修改即可继续编译。
+#ifndef CUSTOM_MESSAGEBOX
+#  define CUSTOM_MESSAGEBOX CustomMessageBox
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -26,10 +32,10 @@ extern "C" {
 //   -2 表示按钮组合非法。
 //
 // 说明：
-//   - 按钮文本由系统语言决定，不能像 CUSTOM_ERROR 一样自定义按钮文字；
+//   - 按钮文本由系统语言决定，不能像 CustomError 一样自定义按钮文字；
 //   - 不支持隐藏关闭按钮；
 //   - 该函数是阻塞的，直到用户关闭消息框才返回。
-ERRORREPORT_API int CUSTOM_MESSAGEBOX(const wchar_t* Title,
+ERRORREPORT_API int CustomMessageBox(const wchar_t* Title,
                                       const wchar_t* Text,
                                       const wchar_t* Icon,
                                       const wchar_t* Buttons);

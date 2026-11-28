@@ -12,32 +12,32 @@
 ## 接口
 
 三个复刻接口均返回 `MessageBoxW` 的返回值，参数为空指针或空字符串时使用内置默认文本，不会崩溃。
-`CUSTOM_ERROR` 返回按钮索引或错误码，`CUSTOM_MESSAGEBOX` 返回 `MessageBoxW` 的标准按钮 ID，见下文。
+`CustomError` 返回按钮索引或错误码，`CustomMessageBox` 返回 `MessageBoxW` 的标准按钮 ID，见下文。
 内存不足等极端情况下会退回固定文本提示，不会让 C++ 异常穿越 C 接口。
 
 ```c
-int DLL_MISSING_ERROR(const wchar_t* ErrorProgram, const wchar_t* MissingDll);
-int EXE_ERROR(const wchar_t* ErrorProgram, const wchar_t* ErrorName,
+int DllMissingError(const wchar_t* ErrorProgram, const wchar_t* MissingDll);
+int ExeError(const wchar_t* ErrorProgram, const wchar_t* ErrorName,
               const wchar_t* ErrorCode, const wchar_t* Address);
-int MEMORY_ERROR(const wchar_t* ErrorProgram, const wchar_t* Operate,
+int MemoryError(const wchar_t* ErrorProgram, const wchar_t* Operate,
                  const wchar_t* Address, const wchar_t* CannotBe);
-int CUSTOM_ERROR(const wchar_t* Title, const wchar_t* Text,
+int CustomError(const wchar_t* Title, const wchar_t* Text,
                  const wchar_t* Icon, const wchar_t* Buttons,
                  int HideCloseButton);
-int CUSTOM_MESSAGEBOX(const wchar_t* Title, const wchar_t* Text,
+int CustomMessageBox(const wchar_t* Title, const wchar_t* Text,
                       const wchar_t* Icon, const wchar_t* Buttons);
 ```
 
 | 接口 | 复刻的对话框 | 按钮 | 返回值 |
 |---|---|---|---|
-| `DLL_MISSING_ERROR` | “无法启动此程序，因为计算机中丢失 xxx。尝试重新安装该程序以解决此问题。” | 确定 | `IDOK` |
-| `EXE_ERROR` | “应用程序发生异常 xxx，位置为 xxx。” | 确定 / 取消 | `IDOK` / `IDCANCEL` |
-| `MEMORY_ERROR` | “xxx 指令引用的 xxx 内存。该内存不能为 xxx。” | 确定 / 取消 | `IDOK` / `IDCANCEL` |
-| `CUSTOM_ERROR` | 完全自定义窗口 | 由 `Buttons` 指定（最多 8 个） | 0 基按钮索引 / `-1` / `-2` |
-| `CUSTOM_MESSAGEBOX` | 自定义标题/正文/图标的标准消息框 | 标准 MessageBox 组合 | MessageBox 按钮 ID / `0` / `-2` |
+| `DllMissingError` | “无法启动此程序，因为计算机中丢失 xxx。尝试重新安装该程序以解决此问题。” | 确定 | `IDOK` |
+| `ExeError` | “应用程序发生异常 xxx，位置为 xxx。” | 确定 / 取消 | `IDOK` / `IDCANCEL` |
+| `MemoryError` | “xxx 指令引用的 xxx 内存。该内存不能为 xxx。” | 确定 / 取消 | `IDOK` / `IDCANCEL` |
+| `CustomError` | 完全自定义窗口 | 由 `Buttons` 指定（最多 8 个） | 0 基按钮索引 / `-1` / `-2` |
+| `CustomMessageBox` | 自定义标题/正文/图标的标准消息框 | 标准 MessageBox 组合 | MessageBox 按钮 ID / `0` / `-2` |
 
 前三个接口的对话框标题统一为 `<程序名> - <分类>`，分类分别是“系统错误”“应用程序错误”；
-程序名为空时显示“未知程序”。`CUSTOM_ERROR` 和 `CUSTOM_MESSAGEBOX` 使用调用方传入的 `Title`，
+程序名为空时显示“未知程序”。`CustomError` 和 `CustomMessageBox` 使用调用方传入的 `Title`，
 不套用这个规则。
 
 ### 参数说明
@@ -45,15 +45,15 @@ int CUSTOM_MESSAGEBOX(const wchar_t* Title, const wchar_t* Text,
 | 接口 | 参数 | 含义 | 为空时的默认值 |
 |---|---|---|---|
 | 前三个接口 | `ErrorProgram` | 程序名，显示在标题栏 | `未知程序` |
-| `DLL_MISSING_ERROR` | `MissingDll` | 缺失的模块（DLL）名 | `未知模块` |
-| `EXE_ERROR` | `ErrorName` | 异常名称，例如 `0xC0000005` | `未知异常` |
-| `EXE_ERROR` | `ErrorCode` | 异常代码或描述 | `未知代码` |
-| `EXE_ERROR` | `Address` | 出错地址 | `未知地址` |
-| `MEMORY_ERROR` | `Operate` | 指令地址 | `0x00000000` |
-| `MEMORY_ERROR` | `Address` | 被引用的内存地址 | `0x00000000` |
-| `MEMORY_ERROR` | `CannotBe` | 访问类型，通常为 `read` / `written` | `read` |
+| `DllMissingError` | `MissingDll` | 缺失的模块（DLL）名 | `未知模块` |
+| `ExeError` | `ErrorName` | 异常名称，例如 `0xC0000005` | `未知异常` |
+| `ExeError` | `ErrorCode` | 异常代码或描述 | `未知代码` |
+| `ExeError` | `Address` | 出错地址 | `未知地址` |
+| `MemoryError` | `Operate` | 指令地址 | `0x00000000` |
+| `MemoryError` | `Address` | 被引用的内存地址 | `0x00000000` |
+| `MemoryError` | `CannotBe` | 访问类型，通常为 `read` / `written` | `read` |
 
-### 自定义窗口 CUSTOM_ERROR
+### 自定义窗口 CustomError
 
 | 参数 | 含义 | 为空或默认 |
 |---|---|---|
@@ -81,7 +81,7 @@ int CUSTOM_MESSAGEBOX(const wchar_t* Title, const wchar_t* Text,
 
 #### 提示音
 
-`CUSTOM_ERROR` 在弹出的同时会播放与 `MessageBox` 相同的系统提示音，按 `Icon` 映射：
+`CustomError` 在弹出的同时会播放与 `MessageBox` 相同的系统提示音，按 `Icon` 映射：
 
 | `Icon` | 播放的系统声音 | 等价的 `MessageBeep` 参数 |
 |---|---|---|
@@ -91,13 +91,13 @@ int CUSTOM_MESSAGEBOX(const wchar_t* Title, const wchar_t* Text,
 | `question` | Windows 问题音 | `MB_ICONQUESTION` |
 | `none` 或省略 | Windows 默认蜂鸣 | `MB_OK` |
 
-这与 `MessageBox`（包括本库的 `CUSTOM_MESSAGEBOX` 和三个复刻接口）内部的行为一致：
+这与 `MessageBox`（包括本库的 `CustomMessageBox` 和三个复刻接口）内部的行为一致：
 它按 `uType & MB_ICONMASK` 取声音，`Icon` 为空时落到 `MB_OK`，即默认蜂鸣。
 具体音色由控制面板的声音方案决定，用户关闭了系统提示音时不会发声；`MessageBeep`
 无法播放指定声音时会退回系统默认音，再退回扬声器蜂鸣。
 
 ```cpp
-const int choice = CUSTOM_ERROR(
+const int choice = CustomError(
     L"自定义错误",
     L"这里是可以换行的自定义内容。\n第二行。",
     L"warning",
@@ -109,10 +109,10 @@ if (choice == 1) {
 }
 ```
 
-### 标准消息框 CUSTOM_MESSAGEBOX
+### 标准消息框 CustomMessageBox
 
 使用标准 `MessageBoxW` 的按钮和系统图标，但标题、正文、图标和按钮组合由调用方指定。
-按钮文本跟随系统语言，不支持自定义按钮文字；需要自定义文字请用 `CUSTOM_ERROR`。
+按钮文本跟随系统语言，不支持自定义按钮文字；需要自定义文字请用 `CustomError`。
 
 | 参数 | 含义 | 为空或默认 |
 |---|---|---|
@@ -122,7 +122,7 @@ if (choice == 1) {
 | `Buttons` | `ok` / `okcancel` / `abortretryignore` / `yesnocancel` / `yesno` / `retrycancel` / `canceltrycontinue`，可追加 `"|help"` | `ok` |
 
 ```cpp
-const int answer = CUSTOM_MESSAGEBOX(
+const int answer = CustomMessageBox(
     L"保存更改",
     L"文档已修改，是否保存？",
     L"question",
@@ -174,7 +174,12 @@ ErrorReportMain/
 
 公共接口只依赖 `include/`，内部实现全部放在 `src/`，调用方无需接触预编译头。
 `ErrorReportMain.def` 是导出名稳定的关键：它把五个 `extern "C"` 函数以无修饰名字导出，
-避免 x86 下 `__cdecl` 的 `_DLL_MISSING_ERROR` 之类修饰名进入导出表。
+避免 x86 下 `__cdecl` 的 `_DllMissingError` 之类修饰名进入导出表。
+
+函数实现使用大驼峰命名（`DllMissingError` 等）。为兼容旧代码，`.def` 把旧的
+`SCREAMING_SNAKE_CASE` 名字作为别名一并导出（例如 `DLL_MISSING_ERROR=DllMissingError`），
+同时每个接口头文件用宏把旧名映射到新名（例如 `#define DLL_MISSING_ERROR DllMissingError`）；
+因此按旧名调用或按旧名查找导出的调用方无需改动即可继续使用。
 
 ## 构建
 
@@ -200,8 +205,9 @@ dumpbin /exports x64\Release\ErrorReportMain.dll
 dumpbin /exports Release\ErrorReportMain.dll
 ```
 
-两个产物都应列出 `DLL_MISSING_ERROR`、`EXE_ERROR`、`MEMORY_ERROR`、`CUSTOM_ERROR`、`CUSTOM_MESSAGEBOX`。x86 的输出会写成
-`DLL_MISSING_ERROR = _DLL_MISSING_ERROR`：等号左边是导出名（无修饰），右边是 DLL 内部的
+两个产物都应列出 `DllMissingError`、`ExeError`、`MemoryError`、`CustomError`、`CustomMessageBox`，
+以及向后兼容的旧名别名 `DLL_MISSING_ERROR`、`EXE_ERROR`、`MEMORY_ERROR`、`CUSTOM_ERROR`、`CUSTOM_MESSAGEBOX`。
+x86 的输出会写成 `DllMissingError = _DllMissingError`：等号左边是导出名（无修饰），右边是 DLL 内部的
 C 修饰符号；判断导出名时以等号左边为准。
 
 产物位于 `x64\Release\`（Win32 对应 `Release\`，没有额外的 `Win32\` 子目录）：
@@ -222,7 +228,7 @@ ErrorReportMain.pdb   # 调试符号
 #include <ErrorReport.h>
 
 int main() {
-    EXE_ERROR(L"Demo.exe", L"0xC0000005",
+    ExeError(L"Demo.exe", L"0xC0000005",
               L"Access violation", L"0x00007FF612340000");
     return 0;
 }
@@ -247,7 +253,7 @@ using DllMissingErrorFn = int (__cdecl*)(const wchar_t*, const wchar_t*);
 HMODULE module = LoadLibraryW(L"ErrorReportMain.dll");
 if (module != nullptr) {
     auto showError = reinterpret_cast<DllMissingErrorFn>(
-        GetProcAddress(module, "DLL_MISSING_ERROR"));
+        GetProcAddress(module, "DllMissingError"));
     if (showError != nullptr) {
         showError(L"Demo.exe", L"MSVCP140.dll");
     }
@@ -255,9 +261,9 @@ if (module != nullptr) {
 }
 ```
 
-> 导出函数使用默认的 `__cdecl` 调用约定，`GetProcAddress` 得到的函数指针需按 `__cdecl` 声明。导出名由 `.def` 固定，x86/x64 都可以直接用 `DLL_MISSING_ERROR` 等名字查找。C# 等语言可通过 `DllImport` 调用；注意同时设置 `ExactSpelling = true` 和 `CallingConvention = CallingConvention.Cdecl`，否则 CLR 会查找 `...W` 后缀，且 x86 下默认的 StdCall 会破坏栈。
+> 导出函数使用默认的 `__cdecl` 调用约定，`GetProcAddress` 得到的函数指针需按 `__cdecl` 声明。导出名由 `.def` 固定，x86/x64 都可以直接用 `DllMissingError` 等名字查找。C# 等语言可通过 `DllImport` 调用；注意同时设置 `ExactSpelling = true` 和 `CallingConvention = CallingConvention.Cdecl`，否则 CLR 会查找 `...W` 后缀，且 x86 下默认的 StdCall 会破坏栈。
 >
-> `CUSTOM_ERROR` 的函数指针类型是 `int (__cdecl*)(const wchar_t*, const wchar_t*, const wchar_t*, const wchar_t*, int)`，用同样的 `GetProcAddress(module, "CUSTOM_ERROR")` 方式获取。
+> `CustomError` 的函数指针类型是 `int (__cdecl*)(const wchar_t*, const wchar_t*, const wchar_t*, const wchar_t*, int)`，用同样的 `GetProcAddress(module, "CustomError")` 方式获取。
 
 ### C# 示例
 
@@ -270,13 +276,13 @@ internal static class ErrorReport
                CharSet = CharSet.Unicode,
                ExactSpelling = true,
                CallingConvention = CallingConvention.Cdecl)]
-    internal static extern int DLL_MISSING_ERROR(string errorProgram, string missingDll);
+    internal static extern int DllMissingError(string errorProgram, string missingDll);
 
     [DllImport("ErrorReportMain.dll",
                CharSet = CharSet.Unicode,
                ExactSpelling = true,
                CallingConvention = CallingConvention.Cdecl)]
-    internal static extern int CUSTOM_ERROR(string title, string text,
+    internal static extern int CustomError(string title, string text,
                                             string icon, string buttons,
                                             int hideCloseButton);
 
@@ -284,13 +290,13 @@ internal static class ErrorReport
                CharSet = CharSet.Unicode,
                ExactSpelling = true,
                CallingConvention = CallingConvention.Cdecl)]
-    internal static extern int CUSTOM_MESSAGEBOX(string title, string text,
+    internal static extern int CustomMessageBox(string title, string text,
                                                  string icon, string buttons);
 }
 ```
 
 ```csharp
-int choice = ErrorReport.CUSTOM_ERROR(
+int choice = ErrorReport.CustomError(
     "自定义错误", "正文", "warning", "重试|取消", 0);
 
 if (choice == 1)
@@ -300,7 +306,7 @@ if (choice == 1)
 ```
 
 ```csharp
-int answer = ErrorReport.CUSTOM_MESSAGEBOX(
+int answer = ErrorReport.CustomMessageBox(
     "保存更改", "文档已修改，是否保存？", "question", "yesnocancel");
 
 if (answer == 7)
@@ -318,22 +324,22 @@ if (answer == 7)
 import ctypes
 
 lib = ctypes.CDLL("./ErrorReportMain.dll")
-lib.CUSTOM_ERROR.argtypes = [ctypes.c_wchar_p] * 4 + [ctypes.c_int]
-lib.CUSTOM_ERROR.restype = ctypes.c_int
+lib.CustomError.argtypes = [ctypes.c_wchar_p] * 4 + [ctypes.c_int]
+lib.CustomError.restype = ctypes.c_int
 
-choice = lib.CUSTOM_ERROR("自定义错误", "正文", "error", "确定|取消", 0)
+choice = lib.CustomError("自定义错误", "正文", "error", "确定|取消", 0)
 # choice: 0 = 确定, 1 = 取消, -1 = 关闭, -2 = 失败
 
-lib.CUSTOM_MESSAGEBOX.argtypes = [ctypes.c_wchar_p] * 4
-lib.CUSTOM_MESSAGEBOX.restype = ctypes.c_int
+lib.CustomMessageBox.argtypes = [ctypes.c_wchar_p] * 4
+lib.CustomMessageBox.restype = ctypes.c_int
 
-answer = lib.CUSTOM_MESSAGEBOX("保存更改", "文档已修改，是否保存？", "question", "yesnocancel")
+answer = lib.CustomMessageBox("保存更改", "文档已修改，是否保存？", "question", "yesnocancel")
 # answer: 6 = 是, 7 = 否, 2 = 取消, 0 = 失败, -2 = 参数错误
 ```
 
 ### 视觉样式（为什么有时显示经典按钮）
 
-`MessageBoxW`、`CUSTOM_ERROR` 和 `CUSTOM_MESSAGEBOX` 里的标准控件都使用**宿主进程**的视觉样式：
+`MessageBoxW`、`CustomError` 和 `CustomMessageBox` 里的标准控件都使用**宿主进程**的视觉样式：
 
 - 带 `Microsoft.Windows.Common-Controls` 6.0 manifest 的宿主会显示 Windows 10/11 的现代图标和扁平按钮；
 - 不带这个 manifest 的原生宿主会退回到经典样式，看起来像 Windows 2000。
@@ -426,10 +432,10 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
   以保证声明、`extern "C"` 链接和依赖关系清晰。
 - 导出名由 `ErrorReportMain.def` 固定；构建 DLL 时 `ERRORREPORT_API` 为空，链接 DLL 时为 `__declspec(dllimport)`，静态编译时为空。仓库工程只生成 DLL，如需把实现直接编入调用方，可手动编译 `src/` 中的实现文件（通常排除 `src/dllmain.cpp`）并定义 `ERRORREPORTMAIN_STATIC`（不需要 `.def`）。迁移到其他构建系统时，记得保留 `.def` 或改用 `__declspec(dllexport)`。
 - 消息框优先挂到调用线程的活动窗口；没有活动窗口时，只接受同进程的前台窗口，避免对话框被其他窗口遮挡或错误绑定到其他进程。
-- `CUSTOM_ERROR` 使用内存中的对话框模板加标准 `STATIC` / `BUTTON` / `EDIT` 控件，背景使用 `COLOR_WINDOW`，图标来自 shell 的现代库存图标；控件外观跟随宿主视觉样式。
-- `CUSTOM_MESSAGEBOX` 复用 `MessageBoxW` 的 owner 选择和标题拼接逻辑，按钮组合/图标映射为标准 MessageBox 标志；不支持自定义按钮文字或隐藏关闭按钮。
-- `CUSTOM_ERROR` 在 `WM_INITDIALOG` 里调用 `MessageBeep`，按图标播放与 `MessageBox` 一致的系统提示音（见“提示音”）；声音异步播放，不阻塞窗口显示。
-- `CUSTOM_ERROR` 在创建时按 owner 所在显示器的 DPI 计算尺寸并居中；正文太长时切换为带垂直滚动条的只读 `EDIT`，避免长文本把窗口撑得过高。
+- `CustomError` 使用内存中的对话框模板加标准 `STATIC` / `BUTTON` / `EDIT` 控件，背景使用 `COLOR_WINDOW`，图标来自 shell 的现代库存图标；控件外观跟随宿主视觉样式。
+- `CustomMessageBox` 复用 `MessageBoxW` 的 owner 选择和标题拼接逻辑，按钮组合/图标映射为标准 MessageBox 标志；不支持自定义按钮文字或隐藏关闭按钮。
+- `CustomError` 在 `WM_INITDIALOG` 里调用 `MessageBeep`，按图标播放与 `MessageBox` 一致的系统提示音（见“提示音”）；声音异步播放，不阻塞窗口显示。
+- `CustomError` 在创建时按 owner 所在显示器的 DPI 计算尺寸并居中；正文太长时切换为带垂直滚动条的只读 `EDIT`，避免长文本把窗口撑得过高。
 - `HideCloseButton` 通过移除 `WS_SYSMENU` 和系统菜单里的 `SC_CLOSE` 实现，同时在消息处理中忽略 X、Alt+F4 和 Esc。
 - 导出函数捕获所有 C++ 异常；内存不足等情况下退回固定文本，不让异常穿越 C 接口。
 - 使用静态 CRT（Debug 为 `/MTd`，Release 为 `/MT`），DLL 只依赖 `KERNEL32.dll`、`USER32.dll`、`GDI32.dll` 和 `SHELL32.dll`，目标机器无需安装 VC++ 运行库。
@@ -440,13 +446,13 @@ Launcher\bin\Release\net48\ErrorReportLauncher.exe
 - 本库只负责弹窗，不捕获真实崩溃、不生成 dump，也不判断进程是否真的处于异常状态。
 - 视觉样式由宿主 manifest 决定：带 comctl32 v6 的宿主使用 Windows 10/11 现代按钮/图标；没有 manifest 的原生宿主显示经典样式（见“视觉样式”）。
 - 文本和布局仍然是经典错误框的复刻，不会与 XP 弹窗逐像素一致；如果要求逐像素，需要自绘对话框。
-- `CUSTOM_ERROR` 最多支持 8 个按钮，且只排成一行；按钮文本过长会把窗口撑宽。
-- `CUSTOM_ERROR` 的图标只支持 `error` / `warning` / `info` / `question` / `none` 这几个系统图标，不支持从 `.ico` 文件加载自定义图标。
-- `CUSTOM_ERROR` 的按钮文本把 `&` 当作 Win32 加速键前缀；要显示字面量 `&` 请写成 `&&`。
-- `CUSTOM_ERROR` 的提示音取自系统声音方案，无法单独关闭，也不能指定自定义音效。
-- `CUSTOM_ERROR` 在窗口打开期间不会跟随显示器 DPI 变化重新布局；初始 DPI 和居中位置是正确的。
-- `CUSTOM_MESSAGEBOX` 只能使用标准 MessageBox 按钮组合，按钮文本跟随系统语言，不支持自定义按钮文字或隐藏关闭按钮。
-- `CUSTOM_MESSAGEBOX` 的 `"|help"` 只会显示“帮助”按钮，不提供帮助内容的处理回调。
+- `CustomError` 最多支持 8 个按钮，且只排成一行；按钮文本过长会把窗口撑宽。
+- `CustomError` 的图标只支持 `error` / `warning` / `info` / `question` / `none` 这几个系统图标，不支持从 `.ico` 文件加载自定义图标。
+- `CustomError` 的按钮文本把 `&` 当作 Win32 加速键前缀；要显示字面量 `&` 请写成 `&&`。
+- `CustomError` 的提示音取自系统声音方案，无法单独关闭，也不能指定自定义音效。
+- `CustomError` 在窗口打开期间不会跟随显示器 DPI 变化重新布局；初始 DPI 和居中位置是正确的。
+- `CustomMessageBox` 只能使用标准 MessageBox 按钮组合，按钮文本跟随系统语言，不支持自定义按钮文字或隐藏关闭按钮。
+- `CustomMessageBox` 的 `"|help"` 只会显示“帮助”按钮，不提供帮助内容的处理回调。
 - 启动器弹窗组最多 1000 个弹窗；无限循环弹窗必须是最后一个，否则生成时会报错。
 - 无限循环会持续写日志，文件会不断增长；需要停止时只能结束播放器进程。
 - 启动器勾选“日志生成在运行文件夹”时，如果 exe 位于 Program Files 等只读目录，日志会写入失败；请改用可写目录。
